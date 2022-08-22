@@ -20,8 +20,8 @@ def test_pattern_of():
     """测试 BasePattern 的快速创建方法之一, 对类有效"""
     pat = BasePattern.of(int)
     assert pat.origin == int
-    assert pat.validate(123)[0] == 123
-    assert pat.validate("abc")[1] == "E"
+    assert pat.validate(123).value == 123
+    assert pat.validate("abc").failed
     print(pat)
 
 
@@ -29,46 +29,46 @@ def test_pattern_on():
     """测试 BasePattern 的快速创建方法之一, 对对象有效"""
     pat1 = BasePattern.on(123)
     assert pat1.origin == int
-    assert pat1.validate(123)[0] == 123
-    assert pat1.validate(124)[1] == "E"
+    assert pat1.validate(123).value == 123
+    assert pat1.validate(124).failed
     print(pat1)
 
 
 def test_pattern_keep():
     """测试 BasePattern 的保持模式, 不会进行匹配或者类型转换"""
     pat2 = BasePattern(model=PatternModel.KEEP)
-    assert pat2.validate(123)[0] == 123
-    assert pat2.validate("abc")[0] == "abc"
+    assert pat2.validate(123).value == 123
+    assert pat2.validate("abc").value == "abc"
     print(pat2)
 
 
 def test_pattern_regex():
     """测试 BasePattern 的正则匹配模式, 仅正则匹配"""
     pat3 = BasePattern("abc[A-Z]+123", PatternModel.REGEX_MATCH)
-    assert pat3.validate("abcABC123")[0] == "abcABC123"
-    assert pat3.validate("abcAbc123")[1] == "E"
+    assert pat3.validate("abcABC123").value == "abcABC123"
+    assert pat3.validate("abcAbc123").failed
     print(pat3)
 
 
 def test_pattern_regex_convert():
     """测试 BasePattern 的正则转换模式, 正则匹配成功后再进行类型转换"""
     pat4 = BasePattern(r"\[at:(\d+)\]", PatternModel.REGEX_CONVERT, int)
-    assert pat4.validate("[at:123456]")[0] == 123456
-    assert pat4.validate("[at:abcdef]")[1] == "E"
-    assert pat4.validate(123456)[0] == 123456
+    assert pat4.validate("[at:123456]").value == 123456
+    assert pat4.validate("[at:abcdef]").failed
+    assert pat4.validate(123456).value == 123456
     print(pat4)
 
 
 def test_pattern_type_convert():
     """测试 BasePattern 的类型转换模式, 仅将传入对象变为另一类型的新对象"""
     pat5 = BasePattern(model=PatternModel.TYPE_CONVERT, origin=str)
-    assert pat5.validate(123)[0] == "123"
-    assert pat5.validate([4, 5, 6])[0] == "[4, 5, 6]"
+    assert pat5.validate(123).value == "123"
+    assert pat5.validate([4, 5, 6]).value == "[4, 5, 6]"
     pat5_1 = BasePattern(
         model=PatternModel.TYPE_CONVERT, origin=int, converter=lambda x: eval(x)
     )
-    assert pat5_1.validate("123")[0] == 123
-    assert pat5_1.validate("123.0")[1] == "E"
+    assert pat5_1.validate("123").value == 123
+    assert pat5_1.validate("123.0").failed
     print(pat5)
 
 
@@ -80,11 +80,11 @@ def test_pattern_accepts():
         converter=lambda x: x.decode(),
         accepts=[bytes],
     )
-    assert pat6.validate(b"123")[0] == "123"
-    assert pat6.validate(123)[1] == "E"
+    assert pat6.validate(b"123").value == "123"
+    assert pat6.validate(123).failed
     pat6_1 = BasePattern(model=PatternModel.KEEP, accepts=[int, float])
-    assert pat6_1.validate(123)[0] == 123
-    assert pat6_1.validate("123")[1] == "E"
+    assert pat6_1.validate(123).value == 123
+    assert pat6_1.validate("123").failed
     print(pat6, pat6_1)
 
 
@@ -105,8 +105,8 @@ def test_pattern_previous():
         converter=lambda x: int(x),
         previous=pat7,
     )
-    assert pat7_1.validate("abc[123]")[0] == 123
-    assert pat7_1.validate(A())[0] == 123
+    assert pat7_1.validate("abc[123]").value == 123
+    assert pat7_1.validate(A()).value == 123
     pat7_2 = BasePattern(model=PatternModel.TYPE_CONVERT, origin=str)
     pat7_3 = BasePattern(
         model=PatternModel.TYPE_CONVERT,
@@ -114,17 +114,17 @@ def test_pattern_previous():
         accepts=[int, float],
         previous=pat7_2,
     )
-    assert pat7_3.validate("123")[1] == "E"
+    assert pat7_3.validate("123").failed
     print(pat7, pat7_1)
 
 
 def test_pattern_anti():
     """测试 BasePattern 的反向验证功能"""
     pat8 = BasePattern.of(int)
-    assert pat8.validate(123)[1] == "V"
-    assert pat8.invalidate(123)[1] == "E"
-    assert pat8.validate("123")[1] == "E"
-    assert pat8.invalidate("123")[1] == "V"
+    assert pat8.validate(123).success
+    assert pat8.invalidate(123).failed
+    assert pat8.validate("123").failed
+    assert pat8.invalidate("123").success
     print(pat8)
     print(pat8.reverse())
 
@@ -134,9 +134,9 @@ def test_pattern_validator():
     pat9 = BasePattern(
         model=PatternModel.KEEP, origin=int, validators=[lambda x: x > 0]
     )
-    assert pat9.validate(23)[0] == 23
-    assert pat9.validate(-23)[1] == "E"
-    assert pat9.invalidate(-23)[1] == "V"
+    assert pat9.validate(23).value == 23
+    assert pat9.validate(-23).failed
+    assert pat9.invalidate(-23).success
     pat9_1 = BasePattern.to(set_unit(int, lambda x: x != 0))
     assert pat9_1.invalidate("123")
     print(pat9)
@@ -144,16 +144,16 @@ def test_pattern_validator():
 
 def test_pattern_default():
     pat10 = BasePattern.of(int)
-    assert pat10.validate("123", 123)[1] == "D"
-    assert pat10.invalidate("123", 123)[1] == "V"
-    assert pat10.invalidate(123, "123")[0] == "123"
+    assert pat10.validate("123", 123).or_default
+    assert pat10.invalidate("123", 123).success
+    assert pat10.invalidate(123, "123").value == "123"
 
 
 def test_type_parser():
     from typing import Literal, Type
 
     pat11 = type_parser(int)
-    assert pat11.validate(-321)[1] == "V"
+    assert pat11.validate(-321).success
     pat11_1 = type_parser(123)
     assert pat11_1 == BasePattern.on(123)
     print(pat11, pat11_1)
@@ -166,9 +166,9 @@ def test_type_parser():
     assert type_parser(Type[int]).origin is type
     assert type_parser(complex) == BasePattern.of(complex)
     assert isinstance(type_parser("a|b|c"), UnionArg)
-    assert type_parser([1, 2, 3]).validate(1)[1] == 'V'
-    assert type_parser({"a": 1, "b": 2}).validate('a')[0] == 1
-    assert type_parser(lambda x: x + 1).validate(1)[0] == 2
+    assert type_parser([1, 2, 3]).validate(1).success
+    assert type_parser({"a": 1, "b": 2}).validate('a').value == 1
+    assert type_parser(lambda x: x + 1).validate(1).value == 2
 
     def my_func(x: int) -> str:
         return str(x)
@@ -189,15 +189,15 @@ def test_union_pattern():
     from typing import Union, Optional
 
     pat12 = type_parser(Union[int, str])
-    assert pat12.validate(123)[1] == "V"
-    assert pat12.validate("123")[1] == "V"
-    assert pat12.validate(123.0)[1] == "E"
+    assert pat12.validate(123).success
+    assert pat12.validate("123").success
+    assert pat12.validate(123.0).failed
     pat12_1 = type_parser(Optional[str])
-    assert pat12_1.validate("123")[1] == "V"
-    assert pat12_1.validate(None)[1] == "V"
+    assert pat12_1.validate("123").success
+    assert pat12_1.validate(None).success
     pat12_2 = UnionArg(["abc", "efg"])
-    assert pat12_2.validate("abc")[1] == "V"
-    assert pat12_2.validate("bca")[1] == "E"
+    assert pat12_2.validate("abc").success
+    assert pat12_2.validate("bca").failed
     print(pat12, pat12_1, pat12_2)
 
 
@@ -207,10 +207,10 @@ def test_seq_pattern():
     pat13 = type_parser(List[int])
     pat13_1 = type_parser(Tuple[int, int])
     pat13_2 = type_parser(Set[int])
-    assert pat13.validate("[1,2,3]")[0] == [1, 2, 3]
-    assert pat13.validate([1, 2, 3])[1] == "V"
-    assert pat13_1.validate("(1,2,3)")[0] == (1, 2, 3)
-    assert pat13_2.validate("{1,2,3.0}")[1] == "E"
+    assert pat13.validate("[1,2,3]").value == [1, 2, 3]
+    assert pat13.validate([1, 2, 3]).success
+    assert pat13_1.validate("(1,2,3)").value == (1, 2, 3)
+    assert pat13_2.validate("{1,2,3.0}").failed
     print(pat13, pat13_1, pat13_2)
     try:
         SequenceArg(BasePattern.of(int), "orderlist")
@@ -222,11 +222,11 @@ def test_map_pattern():
     from typing import Dict
 
     pat14 = type_parser(Dict[str, int])
-    assert pat14.validate("{a:1,b:2}")[0] == {"a": 1, "b": 2}
-    assert pat14.validate("{a:1.0, b:2}")[1] == "E"
-    assert pat14.validate({"a": 1, "b": 2})[1] == "V"
+    assert pat14.validate("{a:1,b:2}").value == {"a": 1, "b": 2}
+    assert pat14.validate("{a:1.0, b:2}").failed
+    assert pat14.validate({"a": 1, "b": 2}).success
     pat14_1 = type_parser(Dict[int, int])
-    assert pat14_1.validate({"a": 1, "b": 2})[1] == "E"
+    assert pat14_1.validate({"a": 1, "b": 2}).failed
     print(pat14)
 
 
@@ -240,20 +240,20 @@ def test_generic_isinstance():
 
 def test_converters():
     print(pattern_map)
-    assert pattern_map["email"].validate("example@outlook.com")[1] == "V"
-    assert pattern_map["ip"].validate("192.168.0.1")[1] == "V"
-    assert pattern_map["url"].validate("https://www.example.com")[1] == "V"
-    assert pattern_map["hex"].validate("0xff")[0] == 255
-    assert pattern_map["color"].validate("#ffffff")[0] == "ffffff"
-    assert pattern_map["datetime"].validate("2011-11-04")[0].day == 4
-    assert pattern_map["file"].validate("test.py")[0][:4] == b"from"
-    assert pattern_map["int"].validate("123")[0] == 123
-    assert pattern_map["float"].validate("12.34")[0] == 12.34
-    assert pattern_map["bool"].validate("false")[0] is False
-    assert pattern_map["list"].validate("[1,2,3]")[0] == [1, 2, 3]
-    assert pattern_map["tuple"].validate("(1,2,3)")[0] == (1, 2, 3)
-    assert pattern_map["set"].validate("{1,2,3}")[0] == {1, 2, 3}
-    assert pattern_map["dict"].validate('{"a":1,"b":2,"c":3}')[0] == {
+    assert pattern_map["email"].validate("example@outlook.com").success
+    assert pattern_map["ip"].validate("192.168.0.1").success
+    assert pattern_map["url"].validate("https://www.example.com").success
+    assert pattern_map["hex"].validate("0xff").value == 255
+    assert pattern_map["color"].validate("#ffffff").value == "ffffff"
+    assert pattern_map["datetime"].validate("2011-11-04").value.day == 4
+    assert pattern_map["file"].validate("test.py").value[:4] == b"from"
+    assert pattern_map["int"].validate("123").value == 123
+    assert pattern_map["float"].validate("12.34").value == 12.34
+    assert pattern_map["bool"].validate("false").value is False
+    assert pattern_map["list"].validate("[1,2,3]").value == [1, 2, 3]
+    assert pattern_map["tuple"].validate("(1,2,3)").value == (1, 2, 3)
+    assert pattern_map["set"].validate("{1,2,3}").value == {1, 2, 3}
+    assert pattern_map["dict"].validate('{"a":1,"b":2,"c":3}').value == {
         "a": 1,
         "b": 2,
         "c": 3,

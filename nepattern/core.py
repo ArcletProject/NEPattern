@@ -1,5 +1,5 @@
 import re
-from enum import IntEnum
+from enum import IntEnum, Enum
 from typing import (
     TypeVar,
     Type,
@@ -8,11 +8,10 @@ from typing import (
     Any,
     Union,
     List,
-    Literal,
-    Tuple,
     Generic,
     overload,
 )
+from dataclasses import dataclass
 
 try:
     from typing import Annotated  # type: ignore
@@ -37,8 +36,42 @@ class PatternModel(IntEnum):
     """保持传入值"""
 
 
+class ResultFlag(str, Enum):
+    """参数表达式验证结果标识符"""
+
+    VALID = "valid"
+    "验证通过"
+    ERROR = "error"
+    "验证失败"
+    DEFAULT = "default"
+    "默认值"
+
+
 TOrigin = TypeVar("TOrigin")
 TDefault = TypeVar("TDefault")
+
+
+@dataclass
+class ValidateResult(Generic[TOrigin]):
+    value: TOrigin
+    flag: ResultFlag
+
+    @property
+    def error(self) -> Optional[Exception]:
+        if self.flag == ResultFlag.ERROR:
+            return self.value
+
+    @property
+    def success(self) -> bool:
+        return self.flag == ResultFlag.VALID
+
+    @property
+    def failed(self) -> bool:
+        return self.flag == ResultFlag.ERROR
+
+    @property
+    def or_default(self) -> bool:
+        return self.flag == ResultFlag.DEFAULT
 
 
 class BasePattern(Generic[TOrigin]):
@@ -194,55 +227,62 @@ class BasePattern(Generic[TOrigin]):
     @overload
     def validate(
         self, input_: Union[str, Any]
-    ) -> Tuple[Union[TOrigin, Exception], Literal["V", "E"]]:
+    ) -> ValidateResult[Union[TOrigin, Exception]]:
         ...
 
     @overload
     def validate(
         self, input_: Union[str, Any], default: TDefault
-    ) -> Tuple[Union[TOrigin, TDefault], Literal["V", "D"]]:
+    ) -> ValidateResult[Union[TOrigin, TDefault]]:
         ...
 
     def validate(
         self, input_: Union[str, Any], default: Optional[TDefault] = None
-    ) -> Tuple[Union[TOrigin, Exception, TOrigin], Literal["V", "E", "D"]]:
+    ) -> ValidateResult[Union[TOrigin, Exception, TDefault]]:
         try:
             res = self.match(input_)
             for i in self.validators:
                 if not i(res):
                     raise MatchFailed(lang.content_error.format(target=input_))
-            return res, "V"
+            return ValidateResult(res, ResultFlag.VALID)
         except Exception as e:
             if default is None:
-                return e, "E"
-            return None if default is Empty else default, "D"
+                return ValidateResult(e, ResultFlag.ERROR)
+            return ValidateResult(
+                None if default is Empty else default, ResultFlag.DEFAULT
+            )
 
     @overload
     def invalidate(
         self, input_: Union[str, Any]
-    ) -> Tuple[Union[TOrigin, Exception], Literal["V", "E"]]:
+    ) -> ValidateResult[Union[TOrigin, Exception]]:
         ...
 
     @overload
     def invalidate(
         self, input_: Union[str, Any], default: TDefault
-    ) -> Tuple[Union[TOrigin, TDefault], Literal["V", "D"]]:
+    ) -> ValidateResult[Union[TOrigin, TDefault]]:
         ...
 
     def invalidate(
         self, input_: Union[str, Any], default: Optional[TDefault] = None
-    ) -> Tuple[Union[TOrigin, Exception, TOrigin], Literal["V", "E", "D"]]:
+    ) -> ValidateResult[Union[TOrigin, Exception, TDefault]]:
         try:
             res = self.match(input_)
         except MatchFailed:
-            return input_, "V"
+            return ValidateResult(input_, ResultFlag.VALID)
         else:
             for i in self.validators:
                 if not i(res):
-                    return input_, "V"
+                    return ValidateResult(input_, ResultFlag.VALID)
             if default is None:
-                return MatchFailed(lang.content_error.format(target=input_)), "E"
-            return None if default is Empty else default, "D"
+                return ValidateResult(
+                    MatchFailed(lang.content_error.format(target=input_)),
+                    ResultFlag.ERROR,
+                )
+            return ValidateResult(
+                None if default is Empty else default, ResultFlag.DEFAULT
+            )
 
 
 def set_unit(
@@ -251,4 +291,4 @@ def set_unit(
     return Annotated[target, predicate]
 
 
-__all__ = ["PatternModel", "BasePattern", "set_unit"]
+__all__ = ["PatternModel", "BasePattern", "set_unit", "ValidateResult"]

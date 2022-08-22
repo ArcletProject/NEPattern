@@ -43,8 +43,7 @@ class UnionArg(BasePattern):
             text = None
         if text not in self.for_equal:
             for pat in self.for_validate:
-                res, v = pat.validate(text)
-                if v == "V":
+                if (res := pat.validate(text)).success:
                     return res
             raise MatchFailed(lang.content_error.format(target=text))
         return text

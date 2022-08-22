@@ -219,12 +219,12 @@ def type_parser(item: Any, extra: str = "allow"):
     if isinstance(item, str):
         if "|" in item:
             names = item.split("|")
-            return UnionArg(type_parser(i) for i in names if i)
+            return UnionArg(pattern_map.get(i, i) for i in names if i)
         return BasePattern(item, alias=f"'{item}'")
     if isinstance(
         item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)
     ):  # Args[foo, [123, int]]
-        return UnionArg(map(type_parser, item))
+        return UnionArg(map(lambda x: type_parser(x) if inspect.isclass(x) else x, item))
     if isinstance(item, (dict, ABCMap, ABCMuMap)):
         return BasePattern(
             "",
