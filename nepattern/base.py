@@ -44,7 +44,7 @@ class UnionArg(BasePattern):
         if text not in self.for_equal:
             for pat in self.for_validate:
                 if (res := pat.validate(text)).success:
-                    return res
+                    return res.value
             raise MatchFailed(lang.content_error.format(target=text))
         return text
 

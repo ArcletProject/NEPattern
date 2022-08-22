@@ -191,6 +191,7 @@ def test_union_pattern():
     pat12 = type_parser(Union[int, str])
     assert pat12.validate(123).success
     assert pat12.validate("123").success
+    assert pat12.validate("123").value == "123"
     assert pat12.validate(123.0).failed
     pat12_1 = type_parser(Optional[str])
     assert pat12_1.validate("123").success
