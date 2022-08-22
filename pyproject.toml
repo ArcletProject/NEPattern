@@ -1,0 +1,52 @@
+[project]
+name = "nepattern"
+version = "0.1.0"
+description = "a complex pattern, support typing"
+authors = [
+    {name = "RF-Tar-Railt", email = "rf_tar_railt@qq.com"},
+]
+dependencies = [
+    "typing-extensions~=4.3.0",
+]
+requires-python = ">=3.8"
+readme = "README.md"
+license = {text = "MIT"}
+[project.urls]
+repository = "https://github.com/ArcletProject/NEPattern"
+
+[build-system]
+requires = ["pdm-pep517>=1.0.0"]
+build-backend = "pdm.pep517.api"
+
+[tool]
+[tool.pdm]
+
+[tool.pdm.build]
+includes = ["nepattern"]
+
+
+[tool.coverage.run]
+branch = true
+source = ["."]
+omit = ["test.py"]
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_lines = [
+    # standard pragma
+    "pragma: no cover",
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if (typing\\.)?TYPE_CHECKING( is True)?:",
+    "\\.\\.\\.",
+    "pass",
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc\\.)?abstractmethod",
+    # Don't complain overload method / functions
+    "@(typing\\.)?overload",
+    "def __repr__",
+    "def __str__",
+    "def __eq__",
+    "except ImportError:",
+]
