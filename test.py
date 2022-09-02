@@ -23,6 +23,8 @@ def test_pattern_of():
     assert pat.validate(123).value == 123
     assert pat.validate("abc").failed
     print(pat)
+    print(pat.validate(123).error)
+    print(pat.validate("abc").error)
 
 
 def test_pattern_on():
