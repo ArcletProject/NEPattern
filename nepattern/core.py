@@ -280,10 +280,11 @@ class BasePattern(Generic[TOrigin]):
             ):
                 raise MatchFailed(lang.type_error.format(target=type(input_)))
         if r := self.regex_pattern.findall(input_):
+            res = r[0][0] if isinstance(r[0], tuple) else r[0]
             return (
-                self.converter(r[0])
+                self.converter(res)
                 if self.model == PatternModel.REGEX_CONVERT
-                else r[0]
+                else res
             )
         raise MatchFailed(lang.content_error.format(target=input_))
 

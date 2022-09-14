@@ -218,6 +218,8 @@ def type_parser(item: Any, extra: str = "allow"):
             model=PatternModel.TYPE_CONVERT,
         )
     if isinstance(item, str):
+        if item.startswith("re:"):
+            return BasePattern(item[3:], alias=f"'{item}'")
         if "|" in item:
             names = item.split("|")
             return UnionArg(pattern_map.get(i, i) for i in names if i)

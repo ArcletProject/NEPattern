@@ -178,6 +178,7 @@ def test_type_parser():
     assert type_parser(Type[int]).origin is type
     assert type_parser(complex) == BasePattern.of(complex)
     assert isinstance(type_parser("a|b|c"), UnionArg)
+    assert isinstance(type_parser("re:a|b|c"), BasePattern)
     assert type_parser([1, 2, 3]).validate(1).success
     assert type_parser({"a": 1, "b": 2}).validate('a').value == 1
     assert type_parser(lambda x: x + 1).validate(1).value == 2

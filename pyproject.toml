@@ -1,6 +1,6 @@
 [project]
 name = "nepattern"
-version = "0.2.0"
+version = "0.2.1"
 description = "a complex pattern, support typing"
 authors = [
     {name = "RF-Tar-Railt", email = "rf_tar_railt@qq.com"},
@@ -39,6 +39,11 @@ build-backend = "pdm.pep517.api"
 [tool.pdm.build]
 includes = ["nepattern"]
 
+[tool.pdm.dev-dependencies]
+dev = [
+    "pytest~=7.1.3",
+    "coverage~=6.4.1"
+]
 
 [tool.coverage.run]
 branch = true
