@@ -169,11 +169,12 @@ set_converters([PathFile, _String, _Digit, _Float, _Bool, _List, _Tuple, _Set, _
 def _generic_parser(item: GenericAlias, extra: str):
     origin = get_origin(item)
     if origin is Annotated:
-        org, meta = get_args(item)
+        org, *meta = get_args(item)
         if not isinstance(_o := type_parser(org, extra), BasePattern):  # type: ignore  # pragma: no cover
             return _o
         _arg = deepcopy(_o)
-        _arg.validators.extend(meta if isinstance(meta, tuple) else [meta])  # type: ignore
+        _arg.alias = al[-1] if (al := [i for i in meta if isinstance(i, str)]) else _arg.alias
+        _arg.validators.extend(i for i in meta if callable(i))
         return _arg
     if origin in (Union, Literal):
         _args = {type_parser(t, extra) for t in get_args(item)}
@@ -263,10 +264,11 @@ class Bind:
             else pattern_map.get(params[0])
         ):
             raise ValueError("Bind[...] first argument should be a BasePattern.")
-        if not all(callable(i) for i in params[1:]):
-            raise TypeError("Bind[...] second argument should be a callable.")
+        if not all(callable(i) or isinstance(i, str) for i in params[1:]):
+            raise TypeError("Bind[...] second argument should be a callable or str.")
         pattern = deepcopy(pattern)
-        pattern.validators.extend(params[1:])
+        pattern.alias = al[0] if (al := [i for i in params[1:] if isinstance(i, str)]) else pattern.alias
+        pattern.validators.extend(filter(callable, params[1:]))
         return pattern
 
 

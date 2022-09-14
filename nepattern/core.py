@@ -1,5 +1,6 @@
 import re
 from enum import IntEnum, Enum
+from copy import deepcopy
 from typing import (
     TypeVar,
     Type,
@@ -14,9 +15,9 @@ from typing import (
 from dataclasses import dataclass
 
 try:
-    from typing import Annotated  # type: ignore
+    from typing import Annotated, Self  # type: ignore
 except ImportError:
-    from typing_extensions import Annotated
+    from typing_extensions import Annotated, Self
 
 from .exception import MatchFailed
 from .config import lang
@@ -47,18 +48,21 @@ class ResultFlag(str, Enum):
     "默认值"
 
 
+T = TypeVar("T")
 TOrigin = TypeVar("TOrigin")
+TVOrigin = TypeVar("TVOrigin")
 TDefault = TypeVar("TDefault")
 
 
 @dataclass
-class ValidateResult(Generic[TOrigin]):
-    value: TOrigin
+class ValidateResult(Generic[TVOrigin]):
+    value: TVOrigin
     flag: ResultFlag
 
     @property
     def error(self) -> Optional[Exception]:
         if self.flag == ResultFlag.ERROR:
+            assert isinstance(self.value, Exception)
             return self.value
 
     @property
@@ -72,6 +76,50 @@ class ValidateResult(Generic[TOrigin]):
     @property
     def or_default(self) -> bool:
         return self.flag == ResultFlag.DEFAULT
+
+    @overload
+    def step(self, other: Type[T]) -> T:
+        ...
+
+    @overload
+    def step(
+        self, other: Callable[[TVOrigin], T]
+    ) -> Union[T, "ValidateResult[TVOrigin]"]:
+        ...
+
+    @overload
+    def step(self, other: Any) -> "ValidateResult[TVOrigin]":
+        ...
+
+    def step(
+        self, other: Union[Type[T], Callable[[TVOrigin], T], Any]
+    ) -> Union[T, "ValidateResult[TVOrigin]", T]:
+        if other is bool:
+            return self.success  # type: ignore
+        if callable(other) and self.success:
+            return other(self.value)
+        if self.success and hasattr(self.value, "__or__"):
+            return self.value | other  # type: ignore
+        return self
+
+    @overload
+    def __or__(self, other: Type[T]) -> T:
+        ...
+
+    @overload
+    def __or__(
+        self, other: Callable[[TVOrigin], T]
+    ) -> Union[T, "ValidateResult[TVOrigin]"]:
+        ...
+
+    @overload
+    def __or__(self, other: Any) -> "ValidateResult[TVOrigin]":
+        ...
+
+    def __or__(
+        self, other: Union[Type[T], Callable[[TVOrigin], T], Any]
+    ) -> Union[T, "ValidateResult[TVOrigin]", T]:
+        return self.step(other)
 
 
 class BasePattern(Generic[TOrigin]):
@@ -117,6 +165,8 @@ class BasePattern(Generic[TOrigin]):
         """
         初始化参数匹配表达式
         """
+        if pattern.startswith("^") or pattern.endswith("$"):
+            raise ValueError(lang.pattern_head_or_tail_error.format(target=pattern))
         self.pattern = pattern
         self.regex_pattern = re.compile(f"^{pattern}$")
         self.model = PatternModel(model)
@@ -184,8 +234,21 @@ class BasePattern(Generic[TOrigin]):
             return res
 
     def reverse(self):
+        """改变 pattern 的 anti 值"""
         self.anti = not self.anti
         return self
+
+    def prefixed(self):
+        """让表达式能在某些场景下实现前缀匹配; 返回自身的拷贝"""
+        if self.model in (PatternModel.REGEX_MATCH, PatternModel.REGEX_CONVERT):
+            self.regex_pattern = re.compile(f"^{self.pattern}")
+        return deepcopy(self)
+
+    def suffixed(self):
+        """让表达式能在某些场景下实现后缀匹配; 返回自身的拷贝"""
+        if self.model in (PatternModel.REGEX_MATCH, PatternModel.REGEX_CONVERT):
+            self.regex_pattern = re.compile(f"{self.pattern}$")
+        return deepcopy(self)
 
     def match(self, input_: Union[str, Any]) -> TOrigin:
         """
@@ -236,9 +299,14 @@ class BasePattern(Generic[TOrigin]):
     ) -> ValidateResult[Union[TOrigin, TDefault]]:
         ...
 
-    def validate(
+    def validate(  # type: ignore
         self, input_: Union[str, Any], default: Optional[TDefault] = None
     ) -> ValidateResult[Union[TOrigin, Exception, TDefault]]:
+        """
+        对传入的值进行正向验证，返回可能的匹配与转化结果。
+
+        若传入默认值，验证失败会返回默认值
+        """
         try:
             res = self.match(input_)
             for i in self.validators:
@@ -255,18 +323,23 @@ class BasePattern(Generic[TOrigin]):
     @overload
     def invalidate(
         self, input_: Union[str, Any]
-    ) -> ValidateResult[Union[TOrigin, Exception]]:
+    ) -> ValidateResult[Union[Any, Exception]]:
         ...
 
     @overload
     def invalidate(
         self, input_: Union[str, Any], default: TDefault
-    ) -> ValidateResult[Union[TOrigin, TDefault]]:
+    ) -> ValidateResult[Union[Any, TDefault]]:
         ...
 
     def invalidate(
         self, input_: Union[str, Any], default: Optional[TDefault] = None
-    ) -> ValidateResult[Union[TOrigin, Exception, TDefault]]:
+    ) -> ValidateResult[Union[Any, Exception, TDefault]]:
+        """
+        对传入的值进行反向验证，返回可能的匹配与转化结果。
+
+        若传入默认值，验证失败会返回默认值
+        """
         try:
             res = self.match(input_)
         except MatchFailed:
@@ -283,6 +356,25 @@ class BasePattern(Generic[TOrigin]):
             return ValidateResult(
                 None if default is Empty else default, ResultFlag.DEFAULT
             )
+
+    def __call__(self, input_: Union[str, Any], default: Optional[TDefault] = None):
+        """
+        依据 anti 值 自动选择验证方式
+        """
+        if self.anti:
+            return self.invalidate(input_, default)
+        else:
+            return self.validate(input_, default)
+
+    def __rmatmul__(self, other):  # pragma: no cover
+        if isinstance(other, str):
+            self.alias = other
+        return self
+
+    def __matmul__(self, other):  # pragma: no cover
+        if isinstance(other, str):
+            self.alias = other
+        return self
 
 
 def set_unit(

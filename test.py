@@ -51,6 +51,11 @@ def test_pattern_regex():
     assert pat3.validate("abcAbc123").failed
     print(pat3)
 
+    try:
+        BasePattern("^abc$", PatternModel.REGEX_MATCH)
+    except ValueError as e:
+        print(e)
+
 
 def test_pattern_regex_convert():
     """测试 BasePattern 的正则转换模式, 正则匹配成功后再进行类型转换"""
@@ -127,8 +132,12 @@ def test_pattern_anti():
     assert pat8.invalidate(123).failed
     assert pat8.validate("123").failed
     assert pat8.invalidate("123").success
-    print(pat8)
-    print(pat8.reverse())
+    pat8.reverse()
+    assert pat8(123).failed
+    assert pat8("123").success
+    pat8.reverse()
+    assert pat8(123).success
+    assert pat8("123").failed
 
 
 def test_pattern_validator():
@@ -153,6 +162,7 @@ def test_pattern_default():
 
 def test_type_parser():
     from typing import Literal, Type
+    from typing_extensions import Annotated
 
     pat11 = type_parser(int)
     assert pat11.validate(-321).success
@@ -186,14 +196,19 @@ def test_type_parser():
     except TypeError as e:
         print(e)
 
+    pat11_4 = type_parser(Annotated[int, lambda x: x < 10])
+    assert pat11_4.validate(11).failed
+    pat11_5 = type_parser(Annotated[int, lambda x: x >= 0, "normal number"])
+    assert pat11_5.alias == "normal number"
+
 
 def test_union_pattern():
     from typing import Union, Optional
 
-    pat12 = type_parser(Union[int, str])
+    pat12 = type_parser(Union[int, bool])
     assert pat12.validate(123).success
     assert pat12.validate("123").success
-    assert pat12.validate("123").value == "123"
+    assert pat12.validate("123").value == 123
     assert pat12.validate(123.0).failed
     pat12_1 = type_parser(Optional[str])
     assert pat12_1.validate("123").success
@@ -303,6 +318,62 @@ def test_bind():
         print(e)
 
     assert isinstance(Bind[int, lambda x: x < 10], BasePattern)
+    assert str(Bind[int, lambda x: 0 <= x <= 10, "0~10"]) == '0~10'
+
+
+def test_prefix():
+    from typing import List, Dict
+
+    pat15 = BasePattern.to(int).prefixed()
+    assert pat15.validate("123add").value == 123
+    assert pat15.validate("add123").failed
+    pat15_1 = type_parser(["abc", "dba", 1.0, int]).prefixed()
+    assert pat15_1.validate("abcd").value == "abc"
+    assert pat15_1.validate("2a").value == 2
+    assert pat15_1.validate("1.0").value == 1
+    pat15_2 = type_parser(List[int]).prefixed()
+    assert pat15_2.validate([1, 2, 'a']).value == [1, 2]
+    assert pat15_2.validate(["a", 1, 2]).failed
+    pat15_3: BasePattern[Dict] = type_parser(Dict[int, bool]).prefixed()
+    assert pat15_3.validate({0: True, 1: False, 2: None}).value == {0: True, 1: False}
+    assert pat15_3.validate({0: None, 1: True, 2: False}).failed
+    assert pat15_3.validate({'a': True, 1: False, 2: None}).failed
+    pat15_4 = BasePattern.of(int).prefixed()
+    assert pat15_4.validate(1).success
+    assert pat15_4.validate(1.0).failed
+
+
+def test_suffix():
+    from typing import List, Dict
+
+    pat16 = BasePattern.to(int).suffixed()
+    assert pat16.validate("add123").value == 123
+    assert pat16.validate("123add").failed
+    pat16_1 = type_parser(["abc", "dba", 1.0, int]).suffixed()
+    assert pat16_1.validate("dabc").value == "abc"
+    assert pat16_1.validate("a2").value == 2
+    assert pat16_1.validate("0.1").value == 1
+    pat15_2 = type_parser(List[int]).suffixed()
+    assert pat15_2.validate([1, 2, 'a']).failed
+    assert pat15_2.validate(["a", 1, 2]).value == [1, 2]
+    pat16_3: BasePattern[Dict] = type_parser(Dict[int, bool]).suffixed()
+    assert pat16_3.validate({0: None, 1: False, 2: True}).value == {1: False, 2: True}
+    assert pat16_3.validate({0: False, 1: True, 2: None}).failed
+    assert pat16_3.validate({0: True, 1: False, 'a': None}).failed
+    pat16_4 = BasePattern.of(int).suffixed()
+    assert pat16_4.validate(1).success
+    assert pat16_4.validate(1.0).failed
+
+
+def test_dunder():
+
+    pat17 = BasePattern.of(float)
+    assert ("test_float" @ pat17).alias == "test_float"
+    assert pat17(1.33).step(str) == pat17(1.33) | str == "1.33"
+    assert (pat17(1.33) | 1).value == 1.33
+    assert not pat17('1.33') | bool
+    pat17_1 = BasePattern.of(int)
+    assert pat17_1(1) | 2 == 3
 
 
 if __name__ == "__main__":
