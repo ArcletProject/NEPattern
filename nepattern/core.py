@@ -112,28 +112,35 @@ class ValidateResult(Generic[TVOrigin]):
             return self.success  # type: ignore
         if callable(other) and self.success:
             return other(self.value)
-        if self.success and hasattr(self.value, "__or__"):
+        if self.success and hasattr(self.value, "__rshift__"):
             return self.value | other  # type: ignore
         return self
 
     @overload
-    def __or__(self, other: Type[T]) -> T:
+    def __rshift__(self, other: Type[T]) -> T:
         ...
 
     @overload
-    def __or__(
+    def __rshift__(
         self, other: Callable[[TVOrigin], T]
     ) -> Union[T, "ValidateResult[TVOrigin]"]:
         ...
 
     @overload
-    def __or__(self, other: Any) -> "ValidateResult[TVOrigin]":
+    def __rshift__(self, other: "BasePattern[T]") -> "ValidateResult[Union[T, Exception]]":
         ...
 
-    def __or__(
+    @overload
+    def __rshift__(self, other: Any) -> "ValidateResult[TVOrigin]":
+        ...
+
+    def __rshift__(
         self, other: Union[Type[T], Callable[[TVOrigin], T], Any]
     ) -> Union[T, "ValidateResult[TVOrigin]", T]:
         return self.step(other)
+
+    def __bool__(self):
+        return self.success
 
 
 class BasePattern(Generic[TOrigin]):
@@ -415,6 +422,9 @@ class BasePattern(Generic[TOrigin]):
             return self.invalidate(input_, default)
         else:
             return self.validate(input_, default)
+
+    def __rrshift__(self, other):
+        return self.__call__(other)
 
     def __rmatmul__(self, other):  # pragma: no cover
         if isinstance(other, str):

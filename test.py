@@ -149,7 +149,7 @@ def test_pattern_validator():
     assert pat9.validate(-23).failed
     assert pat9.invalidate(-23).success
     pat9_1 = BasePattern.to(set_unit(int, lambda x: x != 0))
-    assert pat9_1.invalidate("123")
+    assert pat9_1.invalidate("123").failed
     print(pat9)
 
 
@@ -369,13 +369,14 @@ def test_suffix():
 def test_dunder():
     pat17 = BasePattern.of(float)
     assert ("test_float" @ pat17).alias == "test_float"
-    assert pat17(1.33).step(str) == pat17(1.33) | str == "1.33"
-    assert (pat17(1.33) | 1).value == 1.33
-    assert not pat17('1.33') | bool
+    assert pat17(1.33).step(str) == pat17(1.33) >> str == "1.33"
+    assert (pat17(1.33) >> 1).value == 1.33
+    assert not pat17('1.33')
+    assert pat17(1.33) >> bool
     assert BasePattern.of(int).validate(1).step(2) == 3
     pat17_1 = BasePattern(r"@(\d+)")
     pat17_2: BasePattern[int] = type_parser(int)
-    assert (pat17_1("@123456") | pat17_2).value == 123456
+    assert ("@123456" >> pat17_1 >> pat17_2).value == 123456
 
 
 if __name__ == "__main__":

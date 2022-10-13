@@ -15,7 +15,7 @@ from nepattern import BasePattern
 
 pat = BasePattern.of(int)
 assert pat.validate(13).success
-assert not pat(13.0) | bool
+assert not 13.0 >> pat
 ```
 
 ## 特点
