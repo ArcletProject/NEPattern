@@ -1,19 +1,4 @@
-from nepattern import (
-    BasePattern,
-    PatternModel,
-    type_parser,
-    UnionArg,
-    SequenceArg,
-    generic_isinstance,
-    set_unit,
-    pattern_map,
-    set_converter,
-    set_converters,
-    remove_converter,
-    AllParam,
-    AnyOne,
-    Bind
-)
+from nepattern import *
 
 
 def test_pattern_of():
@@ -72,11 +57,21 @@ def test_pattern_type_convert():
     assert pat5.validate(123).value == "123"
     assert pat5.validate([4, 5, 6]).value == "[4, 5, 6]"
     pat5_1 = BasePattern(
-        model=PatternModel.TYPE_CONVERT, origin=int, converter=lambda x: eval(x)
+        model=PatternModel.TYPE_CONVERT, origin=int, converter=lambda self, x: self.origin(x)
     )
     assert pat5_1.validate("123").value == 123
     assert pat5_1.validate("123.0").failed
     print(pat5)
+
+    def convert(self, content):
+        if isinstance(content, str) and content.startswith(self.pattern):
+            return int(self.pattern)
+
+    pat5_3 = BasePattern("123", PatternModel.TYPE_CONVERT, int, convert)
+    assert pat5_3.validate("1234abcd").value == 123
+    assert pat5_3.validate("abc").failed
+    pat5_3.previous = BasePattern(model=PatternModel.TYPE_CONVERT, converter=lambda _, x: f"123{x}")
+    assert pat5_3.validate("abc").value == 123
 
 
 def test_pattern_accepts():
@@ -84,7 +79,7 @@ def test_pattern_accepts():
     pat6 = BasePattern(
         model=PatternModel.TYPE_CONVERT,
         origin=str,
-        converter=lambda x: x.decode(),
+        converter=lambda _, x: x.decode(),
         accepts=[bytes],
     )
     assert pat6.validate(b"123").value == "123"
@@ -93,6 +88,11 @@ def test_pattern_accepts():
     assert pat6_1.validate(123).value == 123
     assert pat6_1.validate("123").failed
     print(pat6, pat6_1)
+    pat6_2 = BasePattern(model=PatternModel.KEEP, accepts=[NUMBER, bytes])
+    assert pat6_2.validate(123).value == 123
+    assert pat6_2.validate(123.123).value == 123.123
+    assert pat6_2.validate(b'123').value == b'123'
+    print(pat6_2)
 
 
 def test_pattern_previous():
@@ -103,13 +103,13 @@ def test_pattern_previous():
             return "123"
 
     pat7 = BasePattern(
-        model=PatternModel.TYPE_CONVERT, origin=str, converter=lambda x: f"abc[{x}]"
+        model=PatternModel.TYPE_CONVERT, origin=str, converter=lambda _, x: f"abc[{x}]"
     )
     pat7_1 = BasePattern(
         r"abc\[(\d+)\]",
         model=PatternModel.REGEX_CONVERT,
         origin=int,
-        converter=lambda x: int(x),
+        converter=lambda self, x: self.origin(x),
         previous=pat7,
     )
     assert pat7_1.validate("abc[123]").value == 123
@@ -188,7 +188,7 @@ def test_type_parser():
 
     pat11_3 = type_parser(my_func)
     assert pat11_3.origin == str
-    assert pat11_3.accepts == [int]
+    assert pat11_3.type_accepts == [int]
 
     assert type_parser(complex, extra='ignore') == AnyOne
 
@@ -367,14 +367,15 @@ def test_suffix():
 
 
 def test_dunder():
-
     pat17 = BasePattern.of(float)
     assert ("test_float" @ pat17).alias == "test_float"
     assert pat17(1.33).step(str) == pat17(1.33) | str == "1.33"
     assert (pat17(1.33) | 1).value == 1.33
     assert not pat17('1.33') | bool
-    pat17_1 = BasePattern.of(int)
-    assert pat17_1(1) | 2 == 3
+    assert BasePattern.of(int).validate(1).step(2) == 3
+    pat17_1 = BasePattern(r"@(\d+)")
+    pat17_2: BasePattern[int] = type_parser(int)
+    assert (pat17_1("@123456") | pat17_2).value == 123456
 
 
 if __name__ == "__main__":

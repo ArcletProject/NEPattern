@@ -15,13 +15,23 @@ from typing import (
 from dataclasses import dataclass
 
 try:
-    from typing import Annotated, Self  # type: ignore
+    from typing import Annotated, Self, get_origin  # type: ignore
 except ImportError:
-    from typing_extensions import Annotated, Self
+    from typing_extensions import Annotated, Self, get_origin
 
 from .exception import MatchFailed
 from .config import lang
 from .util import generic_isinstance, TPattern, Empty
+
+
+def _accept(
+    input_: Any,
+    patterns: Optional[List["BasePattern"]] = None,
+    types: Optional[List[Type]] = None,
+):
+    res_p = any(map(lambda x: x(input_).success, patterns)) if patterns else False
+    res_t = isinstance(input_, tuple(types)) if types else False
+    return res_t or res_p
 
 
 class PatternModel(IntEnum):
@@ -88,12 +98,16 @@ class ValidateResult(Generic[TVOrigin]):
         ...
 
     @overload
+    def step(self, other: "BasePattern[T]") -> "ValidateResult[Union[T, Exception]]":
+        ...
+
+    @overload
     def step(self, other: Any) -> "ValidateResult[TVOrigin]":
         ...
 
     def step(
-        self, other: Union[Type[T], Callable[[TVOrigin], T], Any]
-    ) -> Union[T, "ValidateResult[TVOrigin]", T]:
+        self, other: Union[Type[T], Callable[[TVOrigin], T], Any, "BasePattern[T]"]
+    ) -> Union[T, "ValidateResult[TVOrigin]", T, "ValidateResult[Union[T, Exception]]"]:
         if other is bool:
             return self.success  # type: ignore
         if callable(other) and self.success:
@@ -128,12 +142,13 @@ class BasePattern(Generic[TOrigin]):
     regex_pattern: TPattern  # type: ignore
     pattern: str
     model: PatternModel
-    converter: Callable[[Union[str, Any]], TOrigin]
+    converter: Callable[["BasePattern[TOrigin]", Union[str, Any]], TOrigin]
     validators: List[Callable[[TOrigin], bool]]
 
     anti: bool
     origin: Type[TOrigin]
-    accepts: Optional[List[Type]]
+    pattern_accepts: Optional[List["BasePattern"]]
+    type_accepts: Optional[List[Type]]
     alias: Optional[str]
     previous: Optional["BasePattern"]
 
@@ -144,7 +159,8 @@ class BasePattern(Generic[TOrigin]):
         "converter",
         "anti",
         "origin",
-        "accepts",
+        "pattern_accepts",
+        "type_accepts",
         "alias",
         "previous",
         "validators",
@@ -155,10 +171,12 @@ class BasePattern(Generic[TOrigin]):
         pattern: str = "(.+?)",
         model: Union[int, PatternModel] = PatternModel.REGEX_MATCH,
         origin: Type[TOrigin] = str,
-        converter: Optional[Callable[[Union[str, Any]], TOrigin]] = None,
+        converter: Optional[
+            Callable[["BasePattern[TOrigin]", Union[str, Any]], TOrigin]
+        ] = None,
         alias: Optional[str] = None,
         previous: Optional["BasePattern"] = None,
-        accepts: Optional[List[Type]] = None,
+        accepts: Optional[List[Union[Type, "BasePattern"]]] = None,
         validators: Optional[List[Callable[[TOrigin], bool]]] = None,
         anti: bool = False,
     ):
@@ -173,30 +191,54 @@ class BasePattern(Generic[TOrigin]):
         self.origin = origin
         self.alias = alias
         self.previous = previous
-        self.accepts = accepts
+        accepts = accepts or []
+        self.pattern_accepts = list(
+            filter(lambda x: isinstance(x, BasePattern), accepts)
+        )
+        self.type_accepts = list(
+            filter(lambda x: not isinstance(x, BasePattern), accepts)
+        )
         self.converter = converter or (
-            lambda x: origin(x) if model == PatternModel.TYPE_CONVERT else eval(x)
+            lambda _, x: (get_origin(origin) or origin)(x)
+            if model == PatternModel.TYPE_CONVERT
+            else eval(x)
         )
         self.validators = validators or []
         self.anti = anti
 
     def __repr__(self):
         if self.model == PatternModel.KEEP:
-            return self.alias or (
-                ("|".join(x.__name__ for x in self.accepts)) if self.accepts else "Any"
+            if self.alias:
+                return self.alias
+            if not self.type_accepts and not self.pattern_accepts:
+                return "Any"
+            return "|".join(
+                [x.__name__ for x in self.type_accepts]
+                + [x.__repr__() for x in self.pattern_accepts]
             )
-        name = self.alias or getattr(self.origin, "__name__", str(self.origin))
-        if self.model == PatternModel.REGEX_MATCH:
-            text = self.alias or self.pattern
-        elif self.model == PatternModel.REGEX_CONVERT:
-            text = name
+        if not self.alias:
+            name = getattr(self.origin, "__name__", str(self.origin))
+            if self.model == PatternModel.REGEX_MATCH:
+                text = self.pattern
+            elif self.model == PatternModel.REGEX_CONVERT or (
+                not self.type_accepts and not self.pattern_accepts
+            ):
+                text = name
+            else:
+                text = (
+                    "|".join(
+                        [x.__name__ for x in self.type_accepts]
+                        + [x.__repr__() for x in self.pattern_accepts]
+                    )
+                    + " -> "
+                    + name
+                )
         else:
-            text = (
-                ("|".join(x.__name__ for x in self.accepts) + " -> ")
-                if self.accepts
-                else ""
-            ) + name
-        return f"{(f'{self.previous.__repr__()}, ' if self.previous else '')}{'!' if self.anti else ''}{text}"
+            text = self.alias
+        return (
+            f"{f'{self.previous.__repr__()} -> ' if self.previous and id(self.previous) != id(self) else ''}"
+            f"{'!' if self.anti else ''}{text}"
+        )
 
     def __str__(self):
         return self.__repr__()
@@ -260,19 +302,26 @@ class BasePattern(Generic[TOrigin]):
             and generic_isinstance(input_, self.origin)
         ):
             return input_  # type: ignore
-        if self.accepts and not isinstance(input_, tuple(self.accepts)):
-            if not self.previous or not isinstance(
-                input_ := self.previous.match(input_), tuple(self.accepts)
+        if (self.type_accepts or self.pattern_accepts) and not _accept(
+            input_, self.pattern_accepts, self.type_accepts
+        ):
+            if not self.previous or not _accept(
+                input_ := self.previous.match(input_),
+                self.pattern_accepts,
+                self.type_accepts,
             ):  # pragma: no cover
                 raise MatchFailed(lang.type_error.format(target=input_.__class__))
         if self.model == PatternModel.KEEP:
             return input_  # type: ignore
         if self.model == PatternModel.TYPE_CONVERT:
-            res = self.converter(input_)
-            if not generic_isinstance(res, self.origin) or (
-                not res and self.origin == Any
-            ):
+            res = self.converter(self, input_)
+            if not res and self.origin == Any:  # pragma: no cover
                 raise MatchFailed(lang.content_error.format(target=input_))
+            if not generic_isinstance(res, self.origin):
+                if not self.previous or not generic_isinstance(
+                    res := self.converter(self, self.previous.match(input_)), self.origin
+                ):
+                    raise MatchFailed(lang.content_error.format(target=input_))
             return res
         if not isinstance(input_, str):
             if not self.previous or not isinstance(
@@ -282,7 +331,7 @@ class BasePattern(Generic[TOrigin]):
         if r := self.regex_pattern.findall(input_):
             res = r[0][0] if isinstance(r[0], tuple) else r[0]
             return (
-                self.converter(res)
+                self.converter(self, res)
                 if self.model == PatternModel.REGEX_CONVERT
                 else res
             )
@@ -381,6 +430,7 @@ class BasePattern(Generic[TOrigin]):
 def set_unit(
     target: Type[TOrigin], predicate: Callable[..., bool]
 ) -> Annotated[TOrigin, ...]:
+    """通过predicate区分同一个类的不同情况"""
     return Annotated[target, predicate]
 
 
