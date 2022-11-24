@@ -13,7 +13,7 @@ from contextlib import suppress
 from functools import lru_cache
 from pathlib import Path
 from types import FunctionType, LambdaType, MethodType
-from typing import Optional, Any, Union, Dict, Literal, Iterable
+from typing import Optional, Any, Union, Dict, Literal, Iterable, TypeVar, Type
 
 try:
     from typing import Annotated, get_args, get_origin  # type: ignore
@@ -69,7 +69,6 @@ DATETIME = BasePattern(
 )
 """匹配时间的表达式"""
 
-
 pattern_map = {
     Any: AnyOne,
     Ellipsis: AnyOne,
@@ -87,10 +86,10 @@ pattern_map = {
 
 
 def set_converter(
-    target: BasePattern,
-    alias: Optional[str] = None,
-    cover: bool = True,
-    data: Optional[dict] = None,
+        target: BasePattern,
+        alias: Optional[str] = None,
+        cover: bool = True,
+        data: Optional[dict] = None,
 ):
     """
     增加可使用的类型转换器
@@ -117,9 +116,9 @@ def set_converter(
 
 
 def set_converters(
-    patterns: Union[Iterable[BasePattern], Dict[str, BasePattern]],
-    cover: bool = True,
-    data: Optional[dict] = None,
+        patterns: Union[Iterable[BasePattern], Dict[str, BasePattern]],
+        cover: bool = True,
+        data: Optional[dict] = None,
 ):
     for arg_pattern in patterns:
         if isinstance(patterns, Dict):
@@ -129,7 +128,7 @@ def set_converters(
 
 
 def remove_converter(
-    origin_type: type, alias: Optional[str] = None, data: Optional[dict] = None
+        origin_type: type, alias: Optional[str] = None, data: Optional[dict] = None
 ):
     data = data or pattern_map
     if alias and (al_pat := data.get(alias)):
@@ -228,6 +227,16 @@ def _generic_parser(item: GenericAlias, extra: str):
     return BasePattern("", 0, origin, alias=f"{repr(item).split('.')[-1]}", accepts=[origin])  # type: ignore
 
 
+def _typevar_parser(item: TypeVar):
+    return BasePattern(model=PatternModel.KEEP, origin=Any, alias=f'{item}'[1:], accepts=[item])  # type: ignore
+
+
+def _protocol_parser(item: Type):
+    if getattr(item, '_is_runtime_protocol', False):
+        return BasePattern(model=PatternModel.KEEP, origin=Any, alias=f'{item}', accepts=[item])
+    return AnyOne # pragma: no cover
+
+
 def type_parser(item: Any, extra: str = "allow"):
     """对数类型的检查， 将一般数据类型转为 BasePattern 或者特殊类型"""
     if isinstance(item, BasePattern) or item is AllParam:
@@ -237,6 +246,10 @@ def type_parser(item: Any, extra: str = "allow"):
             return pat
     if not inspect.isclass(item) and isinstance(item, GenericAlias):
         return _generic_parser(item, extra)
+    if isinstance(item, TypeVar):
+        return _typevar_parser(item)
+    if inspect.isclass(item) and getattr(item, "_is_protocol", False):
+        return _protocol_parser(item)
     if isinstance(item, (FunctionType, MethodType, LambdaType)):
         if len((sig := inspect.signature(item)).parameters) not in (1, 2):  # pragma: no cover
             raise TypeError(f"{item} can only accept 1 or 2 argument")
@@ -259,7 +272,7 @@ def type_parser(item: Any, extra: str = "allow"):
             return UnionArg(pattern_map.get(i, i) for i in names if i)
         return BasePattern(item, alias=f"'{item}'")
     if isinstance(
-        item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)
+            item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)
     ):  # Args[foo, [123, int]]
         return UnionArg(
             map(lambda x: type_parser(x) if inspect.isclass(x) else x, item)
@@ -295,9 +308,9 @@ class Bind:
                 "Bind[...] should be used with only two arguments (a type and an annotation)."
             )
         if not (
-            pattern := params[0]
-            if isinstance(params[0], BasePattern)
-            else pattern_map.get(params[0])
+                pattern := params[0]
+                if isinstance(params[0], BasePattern)
+                else pattern_map.get(params[0])
         ):
             raise ValueError("Bind[...] first argument should be a BasePattern.")
         if not all(callable(i) or isinstance(i, str) for i in params[1:]):

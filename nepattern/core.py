@@ -30,7 +30,7 @@ def _accept(
     types: Optional[List[Type]] = None,
 ):
     res_p = any(map(lambda x: x(input_).success, patterns)) if patterns else False
-    res_t = isinstance(input_, tuple(types)) if types else False
+    res_t = generic_isinstance(input_, tuple(types)) if types else False
     return res_t or res_p
 
 
@@ -322,7 +322,7 @@ class BasePattern(Generic[TOrigin]):
             return input_  # type: ignore
         if self.model == PatternModel.TYPE_CONVERT:
             res = self.converter(self, input_)
-            if not res and self.origin == Any:  # pragma: no cover
+            if res is None and self.origin == Any:  # pragma: no cover
                 raise MatchFailed(lang.content_error.format(target=input_))
             if not generic_isinstance(res, self.origin):
                 if not self.previous or not generic_isinstance(

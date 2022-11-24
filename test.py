@@ -161,7 +161,7 @@ def test_pattern_default():
 
 
 def test_type_parser():
-    from typing import Literal, Type
+    from typing import Literal, Type, Protocol, runtime_checkable, TypeVar
     from typing_extensions import Annotated
 
     pat11 = type_parser(int)
@@ -201,6 +201,20 @@ def test_type_parser():
     assert pat11_4.validate(11).failed
     pat11_5 = type_parser(Annotated[int, lambda x: x >= 0, "normal number"])
     assert pat11_5.alias == "normal number"
+
+    @runtime_checkable
+    class TestP(Protocol):
+        def __setitem__(self):
+            ...
+
+    pat11_6 = type_parser(TestP)
+    assert pat11_6.validate([1, 2, 3]).success
+    assert pat11_6.validate((1, 2, 3)).failed
+
+    TestT = TypeVar("TestT", str, int)
+    pat11_7 = type_parser(TestT)
+    assert pat11_7.validate("abc").success
+    assert pat11_7.validate([]).failed
 
 
 def test_union_pattern():
@@ -250,11 +264,15 @@ def test_map_pattern():
 
 
 def test_generic_isinstance():
-    from typing import Union, List
+    from typing import Union, List, TypeVar
+    from typing_extensions import Annotated
 
+    S = TypeVar("S", bound=str)
     assert generic_isinstance(1, int)
     assert generic_isinstance(1, Union[str, int])
     assert generic_isinstance([1], List[int])
+    assert generic_isinstance(1, Annotated[int, lambda x: x > 0])
+    assert generic_isinstance("a", S)
 
 
 def test_converters():
