@@ -174,10 +174,10 @@ def test_type_parser():
     assert not BasePattern.to(None)
     assert type_parser(BasePattern.of(int)) == BasePattern.of(int)
     assert type_parser(AllParam) == AllParam
-    assert isinstance(type_parser(Literal["a", "b"]), UnionArg)
+    assert isinstance(type_parser(Literal["a", "b"]), UnionPattern)
     assert type_parser(Type[int]).origin is type
     assert type_parser(complex) == BasePattern.of(complex)
-    assert isinstance(type_parser("a|b|c"), UnionArg)
+    assert isinstance(type_parser("a|b|c"), UnionPattern)
     assert isinstance(type_parser("re:a|b|c"), BasePattern)
     assert type_parser([1, 2, 3]).validate(1).success
     assert type_parser({"a": 1, "b": 2}).validate('a').value == 1
@@ -228,7 +228,7 @@ def test_union_pattern():
     pat12_1 = type_parser(Optional[str])
     assert pat12_1.validate("123").success
     assert pat12_1.validate(None).success
-    pat12_2 = UnionArg(["abc", "efg"])
+    pat12_2 = UnionPattern(["abc", "efg"])
     assert pat12_2.validate("abc").success
     assert pat12_2.validate("bca").failed
     print(pat12, pat12_1, pat12_2)
@@ -246,7 +246,7 @@ def test_seq_pattern():
     assert pat13_2.validate("{1,2,3.0}").failed
     print(pat13, pat13_1, pat13_2)
     try:
-        SequenceArg(BasePattern.of(int), "orderlist")
+        SequencePattern(dict, BasePattern.of(int))
     except ValueError as e:
         print(e)
 
@@ -304,7 +304,7 @@ def test_converter_method():
     set_converter(BasePattern.of(complex), alias='abc', data=temp)
     assert temp['abc']
     set_converter(BasePattern.of(int), alias='abc', cover=False, data=temp)
-    assert isinstance(temp['abc'], UnionArg)
+    assert isinstance(temp['abc'], UnionPattern)
     set_converters({'b': BasePattern.of(bool), 'c': BasePattern.of(str)}, data=temp)
     assert temp['b']
     assert temp['c']
@@ -395,6 +395,17 @@ def test_dunder():
     pat17_1 = BasePattern(r"@(\d+)")
     pat17_2: BasePattern[int] = type_parser(int)
     assert ("@123456" >> pat17_1 >> pat17_2).value == 123456
+
+
+def test_regex_pattern():
+    pat18 = RegexPattern(r"((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)", "ghrepo")
+    assert pat18.validate(
+        "https://github.com/ArcletProject/NEPattern"
+    ).value == {'owner': 'ArcletProject', 'repo': 'NEPattern'}
+    assert pat18.validate(123).failed
+    assert pat18.validate("www.bilibili.com").failed
+    pat18_1 = type_parser(r"re:(\d+)")
+    assert pat18_1.validate("1234").value == ('1234',)
 
 
 if __name__ == "__main__":

@@ -1,15 +1,17 @@
+from __future__ import annotations
+
 import contextlib
 import inspect
 import sre_compile
 import sys
 import types
-from typing import Any, List, Pattern, Tuple, Type, TypeVar, Literal, Union, get_args, get_origin
+from typing import Any, List, Pattern, TypeVar, Literal, Union, get_args, get_origin
 
 from typing_extensions import Annotated
 
 Empty = inspect.Signature.empty
 GenericAlias = type(List[int])
-TPattern: Type[Pattern] = type(sre_compile.compile("", 0))
+TPattern: type[Pattern] = type(sre_compile.compile("", 0))
 AnnotatedType = type(Annotated[int, lambda x: x > 0])
 Unions = (Union, types.UnionType) if sys.version_info >= (3, 10) else (Union,)  # pragma: no cover
 
@@ -24,7 +26,7 @@ class _All:
 AllParam = _All()
 
 
-def generic_isinstance(obj: Any, par: Union[type, Any, Tuple[type, ...]]) -> bool:
+def generic_isinstance(obj: Any, par: type | Any | tuple[type, ...]) -> bool:
     """
     检查 obj 是否是 par 中的一个类型, 支持泛型, Any, Union, GenericAlias
     """

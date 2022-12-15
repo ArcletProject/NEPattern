@@ -15,7 +15,7 @@ from .main import (
     IP,
     URL,
 )
-from .base import UnionArg, SequenceArg, MappingArg
+from .base import UnionPattern, SequencePattern, MappingPattern, RegexPattern
 from .util import Empty, AllParam, generic_isinstance
 from .exception import MatchFailed
 from .config import lang

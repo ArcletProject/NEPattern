@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import inspect
+import sys
+import types
 from datetime import datetime
 from copy import deepcopy
 from collections.abc import (
@@ -13,7 +17,7 @@ from contextlib import suppress
 from functools import lru_cache
 from pathlib import Path
 from types import FunctionType, LambdaType, MethodType
-from typing import Optional, Any, Union, Dict, Literal, Iterable, TypeVar, Type
+from typing import Any, Union, Dict, Literal, Iterable, TypeVar 
 
 try:
     from typing import Annotated, get_args, get_origin  # type: ignore
@@ -22,8 +26,11 @@ except ImportError:
 
 from .config import lang
 from .core import BasePattern, PatternModel
-from .base import UnionArg, MappingArg, SequenceArg
+from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern
 from .util import AllParam, Empty, GenericAlias
+
+_Contents = (Union, types.UnionType, Literal) if sys.version_info >= (3, 10) else (Union, Literal)  # pragma: no cover
+
 
 AnyOne = BasePattern(r".+", PatternModel.KEEP, Any, alias="any")
 """匹配任意内容的表达式"""
@@ -86,10 +93,10 @@ pattern_map = {
 
 
 def set_converter(
-        target: BasePattern,
-        alias: Optional[str] = None,
-        cover: bool = True,
-        data: Optional[dict] = None,
+    target: BasePattern,
+    alias: str | None = None,
+    cover: bool = True,
+    data: dict | None = None,
 ):
     """
     增加可使用的类型转换器
@@ -109,16 +116,16 @@ def set_converter(
         else:
             al_pat = data[k]
             data[k] = (
-                UnionArg([*al_pat.arg_value, target])
-                if isinstance(al_pat, UnionArg)
-                else (UnionArg([al_pat, target]))
+                UnionPattern([*al_pat.base, target])
+                if isinstance(al_pat, UnionPattern)
+                else (UnionPattern([al_pat, target]))
             )
 
 
 def set_converters(
-        patterns: Union[Iterable[BasePattern], Dict[str, BasePattern]],
-        cover: bool = True,
-        data: Optional[dict] = None,
+    patterns: Iterable[BasePattern] | dict[str, BasePattern],
+    cover: bool = True,
+    data: dict | None = None,
 ):
     for arg_pattern in patterns:
         if isinstance(patterns, Dict):
@@ -128,22 +135,22 @@ def set_converters(
 
 
 def remove_converter(
-        origin_type: type, alias: Optional[str] = None, data: Optional[dict] = None
+    origin_type: type, alias: str | None = None, data: dict | None = None
 ):
     data = data or pattern_map
     if alias and (al_pat := data.get(alias)):
-        if isinstance(al_pat, UnionArg):
-            data[alias] = UnionArg(filter(lambda x: x.alias != alias, al_pat.arg_value))  # type: ignore
-            if not data[alias].arg_value:  # pragma: no cover
+        if isinstance(al_pat, UnionPattern):
+            data[alias] = UnionPattern(filter(lambda x: x.alias != alias, al_pat.base))  # type: ignore
+            if not data[alias].base:  # pragma: no cover
                 del data[alias]
         else:
             del data[alias]
     elif al_pat := data.get(origin_type):
-        if isinstance(al_pat, UnionArg):
-            data[origin_type] = UnionArg(
+        if isinstance(al_pat, UnionPattern):
+            data[origin_type] = UnionPattern(
                 filter(lambda x: x.origin != origin_type, al_pat.for_validate)
             )
-            if not data[origin_type].arg_value:  # pragma: no cover
+            if not data[origin_type].base:  # pragma: no cover
                 del data[origin_type]
         else:
             del data[origin_type]
@@ -209,21 +216,21 @@ def _generic_parser(item: GenericAlias, extra: str):
         )
         _arg.validators.extend(i for i in meta if callable(i))
         return _arg
-    if origin in (Union, Literal):
+    if origin in _Contents:
         _args = {type_parser(t, extra) for t in get_args(item)}
-        return (_args.pop() if len(_args) == 1 else UnionArg(_args)) if _args else item
+        return (_args.pop() if len(_args) == 1 else UnionPattern(_args)) if _args else item
     if origin in (dict, ABCMap, ABCMuMap):
-        return MappingArg(
+        return MappingPattern(
             arg_key=type_parser(get_args(item)[0], "ignore"),
             arg_value=type_parser(get_args(item)[1], "allow"),
         )
     args = type_parser(get_args(item)[0], "allow")
     if origin in (ABCMuSeq, list):
-        return SequenceArg(args)
+        return SequencePattern(list, args)
     if origin in (ABCSeq, tuple):
-        return SequenceArg(args, form="tuple")
+        return SequencePattern(tuple, args)
     if origin in (ABCMuSet, ABCSet, set):
-        return SequenceArg(args, form="set")
+        return SequencePattern(set, args)
     return BasePattern("", 0, origin, alias=f"{repr(item).split('.')[-1]}", accepts=[origin])  # type: ignore
 
 
@@ -231,10 +238,10 @@ def _typevar_parser(item: TypeVar):
     return BasePattern(model=PatternModel.KEEP, origin=Any, alias=f'{item}'[1:], accepts=[item])  # type: ignore
 
 
-def _protocol_parser(item: Type):
+def _protocol_parser(item: type):
     if getattr(item, '_is_runtime_protocol', False):
         return BasePattern(model=PatternModel.KEEP, origin=Any, alias=f'{item}', accepts=[item])
-    return AnyOne # pragma: no cover
+    return AnyOne  # pragma: no cover
 
 
 def type_parser(item: Any, extra: str = "allow"):
@@ -266,15 +273,15 @@ def type_parser(item: Any, extra: str = "allow"):
         )
     if isinstance(item, str):
         if item.startswith("re:"):
-            return BasePattern(item[3:], alias=f"'{item}'")
+            return RegexPattern(item[3:])
         if "|" in item:
             names = item.split("|")
-            return UnionArg(pattern_map.get(i, i) for i in names if i)
+            return UnionPattern(pattern_map.get(i, i) for i in names if i)
         return BasePattern(item, alias=f"'{item}'")
     if isinstance(
-            item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)
+        item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)
     ):  # Args[foo, [123, int]]
-        return UnionArg(
+        return UnionPattern(
             map(lambda x: type_parser(x) if inspect.isclass(x) else x, item)
         )
     if isinstance(item, (dict, ABCMap, ABCMuMap)):

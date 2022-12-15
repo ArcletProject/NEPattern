@@ -1,14 +1,12 @@
+from __future__ import annotations
+
 import re
 from enum import IntEnum, Enum
 from copy import deepcopy
 from typing import (
     TypeVar,
-    Type,
     Callable,
-    Optional,
     Any,
-    Union,
-    List,
     Generic,
     overload,
 )
@@ -26,8 +24,8 @@ from .util import generic_isinstance, TPattern, Empty
 
 def _accept(
     input_: Any,
-    patterns: Optional[List["BasePattern"]] = None,
-    types: Optional[List[Type]] = None,
+    patterns: list[BasePattern] | None = None,
+    types: list[type] | None = None,
 ):
     res_p = any(map(lambda x: x(input_).success, patterns)) if patterns else False
     res_t = generic_isinstance(input_, tuple(types)) if types else False
@@ -70,7 +68,7 @@ class ValidateResult(Generic[TVOrigin]):
     flag: ResultFlag
 
     @property
-    def error(self) -> Optional[Exception]:
+    def error(self) -> Exception | None:
         if self.flag == ResultFlag.ERROR:
             assert isinstance(self.value, Exception)
             return self.value
@@ -88,26 +86,22 @@ class ValidateResult(Generic[TVOrigin]):
         return self.flag == ResultFlag.DEFAULT
 
     @overload
-    def step(self, other: Type[T]) -> T:
+    def step(self, other: type[T] | T) -> T:
         ...
 
     @overload
     def step(
         self, other: Callable[[TVOrigin], T]
-    ) -> Union[T, "ValidateResult[TVOrigin]"]:
+    ) -> T | Self:
         ...
 
     @overload
-    def step(self, other: "BasePattern[T]") -> "ValidateResult[Union[T, Exception]]":
-        ...
-
-    @overload
-    def step(self, other: Any) -> "ValidateResult[TVOrigin]":
+    def step(self, other: BasePattern[T]) -> ValidateResult[T | Exception]:
         ...
 
     def step(
-        self, other: Union[Type[T], Callable[[TVOrigin], T], Any, "BasePattern[T]"]
-    ) -> Union[T, "ValidateResult[TVOrigin]", T, "ValidateResult[Union[T, Exception]]"]:
+        self, other: type[T] | Callable[[TVOrigin], T] | Any | BasePattern[T]
+    ) -> T | Self | ValidateResult[T | Exception]:
         if other is bool:
             return self.success  # type: ignore
         if callable(other) and self.success:
@@ -117,26 +111,22 @@ class ValidateResult(Generic[TVOrigin]):
         return self
 
     @overload
-    def __rshift__(self, other: Type[T]) -> T:
+    def __rshift__(self, other: type[T]| T) -> T:
         ...
 
     @overload
     def __rshift__(
         self, other: Callable[[TVOrigin], T]
-    ) -> Union[T, "ValidateResult[TVOrigin]"]:
+    ) -> T | Self:
         ...
 
     @overload
-    def __rshift__(self, other: "BasePattern[T]") -> "ValidateResult[Union[T, Exception]]":
-        ...
-
-    @overload
-    def __rshift__(self, other: Any) -> "ValidateResult[TVOrigin]":
+    def __rshift__(self, other: BasePattern[T]) -> ValidateResult[T | Exception]:
         ...
 
     def __rshift__(
-        self, other: Union[Type[T], Callable[[TVOrigin], T], Any]
-    ) -> Union[T, "ValidateResult[TVOrigin]", T]:
+        self, other: type[T] | Callable[[TVOrigin], T] | Any
+    ) -> T | Self | ValidateResult[T | Exception]:
         return self.step(other)
 
     def __bool__(self):
@@ -149,15 +139,15 @@ class BasePattern(Generic[TOrigin]):
     regex_pattern: TPattern  # type: ignore
     pattern: str
     model: PatternModel
-    converter: Callable[["BasePattern[TOrigin]", Union[str, Any]], TOrigin]
-    validators: List[Callable[[TOrigin], bool]]
+    converter: Callable[[BasePattern[TOrigin], str | Any], TOrigin]
+    validators: list[Callable[[TOrigin], bool]]
 
     anti: bool
-    origin: Type[TOrigin]
-    pattern_accepts: Optional[List["BasePattern"]]
-    type_accepts: Optional[List[Type]]
-    alias: Optional[str]
-    previous: Optional["BasePattern"]
+    origin: type[TOrigin]
+    pattern_accepts: list[BasePattern] | None
+    type_accepts: list[type] | None
+    alias: str | None
+    previous: BasePattern | None
 
     __slots__ = (
         "regex_pattern",
@@ -176,15 +166,13 @@ class BasePattern(Generic[TOrigin]):
     def __init__(
         self,
         pattern: str = "(.+?)",
-        model: Union[int, PatternModel] = PatternModel.REGEX_MATCH,
-        origin: Type[TOrigin] = str,
-        converter: Optional[
-            Callable[["BasePattern[TOrigin]", Union[str, Any]], TOrigin]
-        ] = None,
-        alias: Optional[str] = None,
-        previous: Optional["BasePattern"] = None,
-        accepts: Optional[List[Union[Type, "BasePattern"]]] = None,
-        validators: Optional[List[Callable[[TOrigin], bool]]] = None,
+        model: int | PatternModel = PatternModel.REGEX_MATCH,
+        origin: type[TOrigin] = str,
+        converter: Callable[[BasePattern[TOrigin], str | Any], TOrigin] | None = None,
+        alias: str | None = None,
+        previous: BasePattern | None = None,
+        accepts: list[type | BasePattern] | None = None,
+        validators: list[Callable[[TOrigin], bool]] | None = None,
         anti: bool = False,
     ):
         """
@@ -217,12 +205,11 @@ class BasePattern(Generic[TOrigin]):
         if self.model == PatternModel.KEEP:
             if self.alias:
                 return self.alias
-            if not self.type_accepts and not self.pattern_accepts:
-                return "Any"
-            return "|".join(
-                [x.__name__ for x in self.type_accepts]
-                + [x.__repr__() for x in self.pattern_accepts]
+            return (
+                "Any" if not self.type_accepts and not self.pattern_accepts else
+                "|".join([x.__name__ for x in self.type_accepts] + [x.__repr__() for x in self.pattern_accepts])
             )
+
         if not self.alias:
             name = getattr(self.origin, "__name__", str(self.origin))
             if self.model == PatternModel.REGEX_MATCH:
@@ -257,14 +244,14 @@ class BasePattern(Generic[TOrigin]):
         return isinstance(other, BasePattern) and self.__repr__() == other.__repr__()
 
     @staticmethod
-    def of(unit: Type[TOrigin]) -> "BasePattern[TOrigin]":
+    def of(unit: type[TOrigin]) -> BasePattern[TOrigin]:
         """提供 Type[DataUnit] 类型的构造方法"""
         return BasePattern(
             "", PatternModel.KEEP, unit, alias=unit.__name__, accepts=[unit]
         )
 
     @staticmethod
-    def on(obj: TOrigin) -> "BasePattern[TOrigin]":
+    def on(obj: TOrigin) -> BasePattern[TOrigin]:
         """提供 DataUnit 类型的构造方法"""
         return BasePattern(
             "",
@@ -275,14 +262,14 @@ class BasePattern(Generic[TOrigin]):
         )
 
     @staticmethod
-    def to(content: Any) -> Optional["BasePattern"]:
+    def to(content: Any) -> BasePattern | None:
         """便捷的使用 type_parser 的方法"""
         from .main import type_parser
 
         if isinstance(res := type_parser(content, "allow"), BasePattern):
             return res
 
-    def reverse(self):
+    def reverse(self) -> Self:
         """改变 pattern 的 anti 值"""
         self.anti = not self.anti
         return self
@@ -299,7 +286,7 @@ class BasePattern(Generic[TOrigin]):
             self.regex_pattern = re.compile(f"{self.pattern}$")
         return deepcopy(self)
 
-    def match(self, input_: Union[str, Any]) -> TOrigin:
+    def match(self, input_: str | Any) -> TOrigin:
         """
         对传入的参数进行匹配, 如果匹配成功, 则返回转换后的值, 否则返回None
         """
@@ -346,19 +333,19 @@ class BasePattern(Generic[TOrigin]):
 
     @overload
     def validate(
-        self, input_: Union[str, Any]
-    ) -> ValidateResult[Union[TOrigin, Exception]]:
+        self, input_: str | Any
+    ) -> ValidateResult[TOrigin | Exception]:
         ...
 
     @overload
     def validate(
-        self, input_: Union[str, Any], default: TDefault
-    ) -> ValidateResult[Union[TOrigin, TDefault]]:
+        self, input_: str | Any, default: TDefault
+    ) -> ValidateResult[TOrigin | TDefault]:
         ...
 
     def validate(  # type: ignore
-        self, input_: Union[str, Any], default: Optional[TDefault] = None
-    ) -> ValidateResult[Union[TOrigin, Exception, TDefault]]:
+        self, input_: str | Any, default: TDefault | None = None
+    ) -> ValidateResult[TOrigin | Exception | TDefault]:
         """
         对传入的值进行正向验证，返回可能的匹配与转化结果。
 
@@ -379,19 +366,19 @@ class BasePattern(Generic[TOrigin]):
 
     @overload
     def invalidate(
-        self, input_: Union[str, Any]
-    ) -> ValidateResult[Union[Any, Exception]]:
+        self, input_: str | Any
+    ) -> ValidateResult[Any | Exception]:
         ...
 
     @overload
     def invalidate(
-        self, input_: Union[str, Any], default: TDefault
-    ) -> ValidateResult[Union[Any, TDefault]]:
+        self, input_: str | Any, default: TDefault
+    ) -> ValidateResult[Any | TDefault]:
         ...
 
     def invalidate(
-        self, input_: Union[str, Any], default: Optional[TDefault] = None
-    ) -> ValidateResult[Union[Any, Exception, TDefault]]:
+        self, input_: str | Any, default: TDefault | None = None
+    ) -> ValidateResult[Any | Exception | TDefault]:
         """
         对传入的值进行反向验证，返回可能的匹配与转化结果。
 
@@ -414,7 +401,7 @@ class BasePattern(Generic[TOrigin]):
                 None if default is Empty else default, ResultFlag.DEFAULT
             )
 
-    def __call__(self, input_: Union[str, Any], default: Optional[TDefault] = None):
+    def __call__(self, input_: str | Any, default: TDefault | None = None):
         """
         依据 anti 值 自动选择验证方式
         """
@@ -426,22 +413,22 @@ class BasePattern(Generic[TOrigin]):
     def __rrshift__(self, other):
         return self.__call__(other)
 
-    def __rmatmul__(self, other):  # pragma: no cover
+    def __rmatmul__(self, other) -> Self:  # pragma: no cover
         if isinstance(other, str):
             self.alias = other
         return self
 
-    def __matmul__(self, other):  # pragma: no cover
+    def __matmul__(self, other) -> Self:  # pragma: no cover
         if isinstance(other, str):
             self.alias = other
         return self
 
 
 def set_unit(
-    target: Type[TOrigin], predicate: Callable[..., bool]
+    target: type[TOrigin], predicate: Callable[..., bool]
 ) -> Annotated[TOrigin, ...]:
     """通过predicate区分同一个类的不同情况"""
     return Annotated[target, predicate]
 
 
-__all__ = ["PatternModel", "BasePattern", "set_unit", "ValidateResult"]
+__all__ = ["PatternModel", "BasePattern", "set_unit", "ValidateResult", "TOrigin"]
