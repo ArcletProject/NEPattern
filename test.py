@@ -161,7 +161,7 @@ def test_pattern_default():
 
 
 def test_type_parser():
-    from typing import Literal, Type, Protocol, runtime_checkable, TypeVar
+    from typing import Literal, Type, Protocol, TypeVar
     from typing_extensions import Annotated
 
     pat11 = type_parser(int)
@@ -202,7 +202,6 @@ def test_type_parser():
     pat11_5 = type_parser(Annotated[int, lambda x: x >= 0, "normal number"])
     assert pat11_5.alias == "normal number"
 
-    @runtime_checkable
     class TestP(Protocol):
         def __setitem__(self):
             ...
@@ -246,7 +245,7 @@ def test_seq_pattern():
     assert pat13_2.validate("{1,2,3.0}").failed
     print(pat13, pat13_1, pat13_2)
     try:
-        SequencePattern(dict, BasePattern.of(int))
+        SequencePattern(dict, BasePattern.of(int))  # type: ignore
     except ValueError as e:
         print(e)
 

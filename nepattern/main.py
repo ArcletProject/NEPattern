@@ -17,7 +17,7 @@ from contextlib import suppress
 from functools import lru_cache
 from pathlib import Path
 from types import FunctionType, LambdaType, MethodType
-from typing import Any, Union, Dict, Literal, Iterable, TypeVar 
+from typing import Any, Union, Dict, Literal, Iterable, TypeVar, runtime_checkable
 
 try:
     from typing import Annotated, get_args, get_origin  # type: ignore
@@ -220,17 +220,19 @@ def _generic_parser(item: GenericAlias, extra: str):
         _args = {type_parser(t, extra) for t in get_args(item)}
         return (_args.pop() if len(_args) == 1 else UnionPattern(_args)) if _args else item
     if origin in (dict, ABCMap, ABCMuMap):
-        return MappingPattern(
-            arg_key=type_parser(get_args(item)[0], "ignore"),
-            arg_value=type_parser(get_args(item)[1], "allow"),
-        )
-    args = type_parser(get_args(item)[0], "allow")
+        if args := get_args(item):
+            return MappingPattern(
+                arg_key=type_parser(args[0], "ignore"),
+                arg_value=type_parser(args[1], "allow"),
+            )
+        return MappingPattern(AnyOne, AnyOne)  # pragma: no cover
+    _args = type_parser(args[0], "allow") if (args := get_args(item)) else AnyOne
     if origin in (ABCMuSeq, list):
-        return SequencePattern(list, args)
+        return SequencePattern(list, _args)
     if origin in (ABCSeq, tuple):
-        return SequencePattern(tuple, args)
+        return SequencePattern(tuple, _args)
     if origin in (ABCMuSet, ABCSet, set):
-        return SequencePattern(set, args)
+        return SequencePattern(set, _args)
     return BasePattern("", 0, origin, alias=f"{repr(item).split('.')[-1]}", accepts=[origin])  # type: ignore
 
 
@@ -239,9 +241,9 @@ def _typevar_parser(item: TypeVar):
 
 
 def _protocol_parser(item: type):
-    if getattr(item, '_is_runtime_protocol', False):
-        return BasePattern(model=PatternModel.KEEP, origin=Any, alias=f'{item}', accepts=[item])
-    return AnyOne  # pragma: no cover
+    if not getattr(item, '_is_runtime_protocol', True):  # pragma: no cover
+        item = runtime_checkable(deepcopy(item))  # type: ignore
+    return BasePattern(model=PatternModel.KEEP, origin=Any, alias=f'{item}', accepts=[item])
 
 
 def type_parser(item: Any, extra: str = "allow"):

@@ -224,8 +224,7 @@ class BasePattern(Generic[TOrigin]):
                         [x.__name__ for x in self.type_accepts]
                         + [x.__repr__() for x in self.pattern_accepts]
                     )
-                    + " -> "
-                    + name
+                    + f" -> {name}"
                 )
         else:
             text = self.alias
