@@ -26,7 +26,7 @@ except ImportError:
 
 from .config import lang
 from .core import BasePattern, PatternModel
-from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern
+from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern
 from .util import AllParam, Empty, GenericAlias
 
 _Contents = (Union, types.UnionType, Literal) if sys.version_info >= (3, 10) else (Union, Literal)  # pragma: no cover
@@ -287,13 +287,7 @@ def type_parser(item: Any, extra: str = "allow"):
             map(lambda x: type_parser(x) if inspect.isclass(x) else x, item)
         )
     if isinstance(item, (dict, ABCMap, ABCMuMap)):
-        return BasePattern(
-            "",
-            PatternModel.TYPE_CONVERT,
-            Any,
-            lambda _, x: item.get(x, None),
-            "|".join(item.keys()),
-        )
+        return SwitchPattern(item)
     if item is None or type(None) == item:
         return Empty
     if extra == "ignore":

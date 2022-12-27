@@ -407,6 +407,15 @@ def test_regex_pattern():
     assert pat18_1.validate("1234").value == ('1234',)
 
 
+def test_switch_pattern():
+    pat19 = SwitchPattern({"foo": 1, "bar": 2})
+    assert pat19.validate("foo").value == 1
+    assert pat19.validate("baz").failed
+    pat19_1 = SwitchPattern({"foo": 1, "bar": 2, ...: 3})
+    assert pat19_1.validate("foo").value == 1
+    assert pat19_1.validate("baz").value == 3
+
+
 if __name__ == "__main__":
     import pytest
 

@@ -14,8 +14,19 @@ from .main import (
     DATETIME,
     IP,
     URL,
+    INTEGER,
+    FLOAT,
 )
-from .base import UnionPattern, SequencePattern, MappingPattern, RegexPattern
+from .base import UnionPattern, SequencePattern, MappingPattern, RegexPattern, SwitchPattern
 from .util import Empty, AllParam, generic_isinstance
 from .exception import MatchFailed
 from .config import lang
+
+
+# backport
+
+UnionArg = UnionPattern
+MappingArg = MappingPattern
+SequenceArg = SequencePattern
+RegexArg = RegexPattern
+SwitchArg = SwitchPattern

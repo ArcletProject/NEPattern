@@ -125,7 +125,7 @@ class SequencePattern(BasePattern[TSeq]):
         success: list[tuple[int, Any]] = []
         fail: list[tuple[int, MatchFailed]] = []
         for _max, s in enumerate(
-            re.split(r"\s*,\s*", _res) if isinstance(_res, str) else _res
+                re.split(r"\s*,\s*", _res) if isinstance(_res, str) else _res
         ):
             try:
                 success.append((_max, self.base.match(s)))
@@ -133,9 +133,9 @@ class SequencePattern(BasePattern[TSeq]):
                 fail.append((_max, MatchFailed(f"{s} is not matched with {self.base}")))
 
         if (
-            (self._mode == "all" and fail)
-            or (self._mode == "pre" and fail and fail[0][0] == 0)
-            or (self._mode == "suf" and fail and fail[-1][0] == _max)
+                (self._mode == "all" and fail)
+                or (self._mode == "pre" and fail and fail[0][0] == 0)
+                or (self._mode == "suf" and fail and fail[-1][0] == _max)
         ):
             raise fail[0][1]
         if self._mode == "pre" and fail:
@@ -205,9 +205,9 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
                     )
                 )
         if (
-            (self._mode == "all" and fail)
-            or (self._mode == "pre" and fail and fail[0][0] == 0)
-            or (self._mode == "suf" and fail and fail[-1][0] == _max)
+                (self._mode == "all" and fail)
+                or (self._mode == "pre" and fail and fail[0][0] == 0)
+                or (self._mode == "suf" and fail and fail[-1][0] == _max)
         ):
             raise fail[0][1]
         if self._mode == "pre" and fail:
@@ -228,4 +228,27 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
         return super(MappingPattern, self).suffixed()
 
 
-__all__ = ["RegexPattern", "UnionPattern", "SequencePattern", "MappingPattern"]
+_TCase = TypeVar("_TCase")
+_TSwitch = TypeVar("_TSwitch")
+
+
+class SwitchPattern(BasePattern[_TCase]):
+    switch: dict[_TSwitch | ellipsis, _TCase]
+
+    def __init__(self, data: dict[_TSwitch | ellipsis, _TCase]):
+        self.switch = data
+        super().__init__("", PatternModel.TYPE_CONVERT, type(list(data.values())[0]))
+
+    def __repr__(self):
+        return "|".join(f"{k}" for k in self.switch if k != Ellipsis)
+
+    def match(self, input_: _TSwitch):
+        try:
+            return self.switch[input_]
+        except KeyError as e:
+            if Ellipsis in self.switch:
+                return self.switch[...]
+            raise MatchFailed(lang.content_error.format(target=input_)) from e
+
+
+__all__ = ["RegexPattern", "UnionPattern", "SequencePattern", "MappingPattern", "SwitchPattern"]
