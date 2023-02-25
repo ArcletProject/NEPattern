@@ -23,7 +23,7 @@ def test_pattern_on():
 
 def test_pattern_keep():
     """测试 BasePattern 的保持模式, 不会进行匹配或者类型转换"""
-    pat2 = BasePattern(model=PatternModel.KEEP)
+    pat2 = BasePattern(model=MatchMode.KEEP)
     assert pat2.validate(123).value == 123
     assert pat2.validate("abc").value == "abc"
     print(pat2)
@@ -31,20 +31,20 @@ def test_pattern_keep():
 
 def test_pattern_regex():
     """测试 BasePattern 的正则匹配模式, 仅正则匹配"""
-    pat3 = BasePattern("abc[A-Z]+123", PatternModel.REGEX_MATCH)
+    pat3 = BasePattern("abc[A-Z]+123", MatchMode.REGEX_MATCH)
     assert pat3.validate("abcABC123").value == "abcABC123"
     assert pat3.validate("abcAbc123").failed
     print(pat3)
 
     try:
-        BasePattern("^abc$", PatternModel.REGEX_MATCH)
+        BasePattern("^abc$", MatchMode.REGEX_MATCH)
     except ValueError as e:
         print(e)
 
 
 def test_pattern_regex_convert():
     """测试 BasePattern 的正则转换模式, 正则匹配成功后再进行类型转换"""
-    pat4 = BasePattern(r"\[at:(\d+)\]", PatternModel.REGEX_CONVERT, int)
+    pat4 = BasePattern(r"\[at:(\d+)\]", MatchMode.REGEX_CONVERT, int)
     assert pat4.validate("[at:123456]").value == 123456
     assert pat4.validate("[at:abcdef]").failed
     assert pat4.validate(123456).value == 123456
@@ -53,11 +53,11 @@ def test_pattern_regex_convert():
 
 def test_pattern_type_convert():
     """测试 BasePattern 的类型转换模式, 仅将传入对象变为另一类型的新对象"""
-    pat5 = BasePattern(model=PatternModel.TYPE_CONVERT, origin=str)
+    pat5 = BasePattern(model=MatchMode.TYPE_CONVERT, origin=str)
     assert pat5.validate(123).value == "123"
     assert pat5.validate([4, 5, 6]).value == "[4, 5, 6]"
     pat5_1 = BasePattern(
-        model=PatternModel.TYPE_CONVERT, origin=int, converter=lambda self, x: self.origin(x)
+        model=MatchMode.TYPE_CONVERT, origin=int, converter=lambda self, x: self.origin(x)
     )
     assert pat5_1.validate("123").value == 123
     assert pat5_1.validate("123.0").failed
@@ -67,28 +67,28 @@ def test_pattern_type_convert():
         if isinstance(content, str) and content.startswith(self.pattern):
             return int(self.pattern)
 
-    pat5_3 = BasePattern("123", PatternModel.TYPE_CONVERT, int, convert)
+    pat5_3 = BasePattern("123", MatchMode.TYPE_CONVERT, int, convert)
     assert pat5_3.validate("1234abcd").value == 123
     assert pat5_3.validate("abc").failed
-    pat5_3.previous = BasePattern(model=PatternModel.TYPE_CONVERT, converter=lambda _, x: f"123{x}")
+    pat5_3.previous = BasePattern(model=MatchMode.TYPE_CONVERT, converter=lambda _, x: f"123{x}")
     assert pat5_3.validate("abc").value == 123
 
 
 def test_pattern_accepts():
     """测试 BasePattern 的输入类型筛选, 不在范围内的类型视为非法"""
     pat6 = BasePattern(
-        model=PatternModel.TYPE_CONVERT,
+        model=MatchMode.TYPE_CONVERT,
         origin=str,
         converter=lambda _, x: x.decode(),
         accepts=[bytes],
     )
     assert pat6.validate(b"123").value == "123"
     assert pat6.validate(123).failed
-    pat6_1 = BasePattern(model=PatternModel.KEEP, accepts=[int, float])
+    pat6_1 = BasePattern(model=MatchMode.KEEP, accepts=[int, float])
     assert pat6_1.validate(123).value == 123
     assert pat6_1.validate("123").failed
     print(pat6, pat6_1)
-    pat6_2 = BasePattern(model=PatternModel.KEEP, accepts=[NUMBER, bytes])
+    pat6_2 = BasePattern(model=MatchMode.KEEP, accepts=[NUMBER, bytes])
     assert pat6_2.validate(123).value == 123
     assert pat6_2.validate(123.123).value == 123.123
     assert pat6_2.validate(b'123').value == b'123'
@@ -103,20 +103,20 @@ def test_pattern_previous():
             return "123"
 
     pat7 = BasePattern(
-        model=PatternModel.TYPE_CONVERT, origin=str, converter=lambda _, x: f"abc[{x}]"
+        model=MatchMode.TYPE_CONVERT, origin=str, converter=lambda _, x: f"abc[{x}]"
     )
     pat7_1 = BasePattern(
         r"abc\[(\d+)\]",
-        model=PatternModel.REGEX_CONVERT,
+        model=MatchMode.REGEX_CONVERT,
         origin=int,
         converter=lambda self, x: self.origin(x),
         previous=pat7,
     )
     assert pat7_1.validate("abc[123]").value == 123
     assert pat7_1.validate(A()).value == 123
-    pat7_2 = BasePattern(model=PatternModel.TYPE_CONVERT, origin=str)
+    pat7_2 = BasePattern(model=MatchMode.TYPE_CONVERT, origin=str)
     pat7_3 = BasePattern(
-        model=PatternModel.TYPE_CONVERT,
+        model=MatchMode.TYPE_CONVERT,
         origin=int,
         accepts=[int, float],
         previous=pat7_2,
@@ -143,7 +143,7 @@ def test_pattern_anti():
 def test_pattern_validator():
     """测试 BasePattern 的匹配后验证器, 会对匹配结果进行验证"""
     pat9 = BasePattern(
-        model=PatternModel.KEEP, origin=int, validators=[lambda x: x > 0]
+        model=MatchMode.KEEP, origin=int, validators=[lambda x: x > 0]
     )
     assert pat9.validate(23).value == 23
     assert pat9.validate(-23).failed
@@ -275,6 +275,7 @@ def test_generic_isinstance():
 
 
 def test_converters():
+    pattern_map = all_patterns()
     print(pattern_map)
     assert pattern_map["email"].validate("example@outlook.com").success
     assert pattern_map["ip"].validate("192.168.0.1").success
@@ -297,25 +298,25 @@ def test_converters():
 
 
 def test_converter_method():
-    temp = {}
-    set_converter(BasePattern.of(complex), data=temp)
+    temp = create_local_patterns("test", set_current=False)
+    temp.set(BasePattern.of(complex))
     assert temp['complex']
-    set_converter(BasePattern.of(complex), alias='abc', data=temp)
+    temp.set(BasePattern.of(complex), alias='abc')
     assert temp['abc']
-    set_converter(BasePattern.of(int), alias='abc', cover=False, data=temp)
+    temp.set(BasePattern.of(int), alias='abc', cover=False)
     assert isinstance(temp['abc'], UnionPattern)
-    set_converters({'b': BasePattern.of(bool), 'c': BasePattern.of(str)}, data=temp)
+    temp.merge({'b': BasePattern.of(bool), 'c': BasePattern.of(str)})
     assert temp['b']
     assert temp['c']
-    remove_converter(complex, alias='complex', data=temp)
+    temp.remove(complex, alias='complex')
     assert not temp.get('complex')
-    set_converter(BasePattern(alias='a'), data=temp)
-    set_converter(BasePattern(origin=int, alias='b'), alias='a', cover=False, data=temp)
-    remove_converter(int, alias='a', data=temp)
+    temp.set(BasePattern(alias='a'))
+    temp.set(BasePattern(origin=int, alias='b'), alias='a', cover=False)
+    temp.remove(int, alias='a')
     assert temp['a']
-    remove_converter(int, data=temp)
-    remove_converter(bool, data=temp)
-    remove_converter(type(None), data=temp)
+    temp.remove(int)
+    temp.remove(bool)
+    temp.remove(type(None))
     assert not temp.get(int)
 
 

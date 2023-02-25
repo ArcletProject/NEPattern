@@ -50,6 +50,3 @@ def generic_isinstance(obj: Any, par: type | Any | tuple[type, ...]) -> bool:
         if isinstance(obj, get_origin(par)):  # type: ignore
             return True
     return False
-
-
-__all__ = ["GenericAlias", "TPattern", "generic_isinstance", "Empty", "AllParam"]

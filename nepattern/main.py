@@ -17,25 +17,30 @@ from contextlib import suppress
 from functools import lru_cache
 from pathlib import Path
 from types import FunctionType, LambdaType, MethodType
-from typing import Any, Union, Dict, Literal, Iterable, TypeVar, runtime_checkable
+from typing import Any, Union, Literal, TypeVar, runtime_checkable
 
 try:
     from typing import Annotated, get_args, get_origin  # type: ignore
 except ImportError:
     from typing_extensions import Annotated, get_args, get_origin
 
+
 from .config import lang
-from .core import BasePattern, PatternModel
+from .context import global_patterns, all_patterns
+from .core import BasePattern, MatchMode
 from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern
 from .util import AllParam, Empty, GenericAlias
 
 _Contents = (Union, types.UnionType, Literal) if sys.version_info >= (3, 10) else (Union, Literal)  # pragma: no cover
 
 
-AnyOne = BasePattern(r".+", PatternModel.KEEP, Any, alias="any")
+AnyOne = BasePattern(r".+", MatchMode.KEEP, Any, alias="any")
 """匹配任意内容的表达式"""
 
-_String = BasePattern(r"(.+?)", PatternModel.KEEP, str, alias="str", accepts=[str])
+AnyString = BasePattern(r".+", MatchMode.TYPE_CONVERT, str, alias="any_str")
+"""匹配任意内容并转为字符串的表达式"""
+
+_String = BasePattern(r".+", MatchMode.KEEP, str, alias="str", accepts=[str])
 
 EMAIL = BasePattern(r"(?:[\w\.+-]+)@(?:[\w\.-]+)\.(?:[\w\.-]+)", alias="email")
 """匹配邮箱地址的表达式"""
@@ -53,7 +58,7 @@ URL = BasePattern(
 
 HEX = BasePattern(
     r"((?:0x)?[0-9a-fA-F]+)",
-    PatternModel.REGEX_CONVERT,
+    MatchMode.REGEX_CONVERT,
     int,
     lambda _, x: int(x, 16),
     "hex",
@@ -61,12 +66,12 @@ HEX = BasePattern(
 """匹配16进制数的表达式"""
 
 HEX_COLOR = BasePattern(
-    r"(#[0-9a-fA-F]{6})", PatternModel.REGEX_CONVERT, str, lambda _, x: x[1:], "color"
+    r"(#[0-9a-fA-F]{6})", MatchMode.REGEX_CONVERT, str, lambda _, x: x[1:], "color"
 )
 """匹配16进制颜色代码的表达式"""
 
 DATETIME = BasePattern(
-    model=PatternModel.TYPE_CONVERT,
+    model=MatchMode.TYPE_CONVERT,
     origin=datetime,
     alias="datetime",
     accepts=[str, int],
@@ -76,91 +81,28 @@ DATETIME = BasePattern(
 )
 """匹配时间的表达式"""
 
-pattern_map = {
-    Any: AnyOne,
-    Ellipsis: AnyOne,
-    object: AnyOne,
-    "email": EMAIL,
-    "color": HEX_COLOR,
-    "hex": HEX,
-    "ip": IP,
-    "url": URL,
-    "...": AnyOne,
-    "*": AllParam,
-    "": Empty,
-    "datetime": DATETIME,
-}
-
-
-def set_converter(
-    target: BasePattern,
-    alias: str | None = None,
-    cover: bool = True,
-    data: dict | None = None,
-):
-    """
-    增加可使用的类型转换器
-
-    Args:
-        target: 设置的表达式
-        alias: 目标类型的别名
-        cover: 是否覆盖已有的转换器
-        data: BasePattern的存储字典
-    """
-    data = pattern_map if data is None else data
-    for k in {alias, target.alias, target.origin}:
-        if not k:
-            continue
-        if k not in data or cover:
-            data[k] = target
-        else:
-            al_pat = data[k]
-            data[k] = (
-                UnionPattern([*al_pat.base, target])
-                if isinstance(al_pat, UnionPattern)
-                else (UnionPattern([al_pat, target]))
-            )
-
-
-def set_converters(
-    patterns: Iterable[BasePattern] | dict[str, BasePattern],
-    cover: bool = True,
-    data: dict | None = None,
-):
-    for arg_pattern in patterns:
-        if isinstance(patterns, Dict):
-            set_converter(patterns[arg_pattern], alias=arg_pattern, cover=cover, data=data)  # type: ignore
-        else:
-            set_converter(arg_pattern, cover=cover, data=data)  # type: ignore
-
-
-def remove_converter(
-    origin_type: type, alias: str | None = None, data: dict | None = None
-):
-    data = data or pattern_map
-    if alias and (al_pat := data.get(alias)):
-        if isinstance(al_pat, UnionPattern):
-            data[alias] = UnionPattern(filter(lambda x: x.alias != alias, al_pat.base))  # type: ignore
-            if not data[alias].base:  # pragma: no cover
-                del data[alias]
-        else:
-            del data[alias]
-    elif al_pat := data.get(origin_type):
-        if isinstance(al_pat, UnionPattern):
-            data[origin_type] = UnionPattern(
-                filter(lambda x: x.origin != origin_type, al_pat.for_validate)
-            )
-            if not data[origin_type].base:  # pragma: no cover
-                del data[origin_type]
-        else:
-            del data[origin_type]
-
+global_patterns().update(
+    {
+        Any: AnyOne,
+        Ellipsis: AnyOne,
+        object: AnyOne,
+        "any": AnyOne,
+        "any_str": AnyString,
+        "email": EMAIL,
+        "color": HEX_COLOR,
+        "hex": HEX,
+        "ip": IP,
+        "url": URL,
+        "...": AnyOne,
+        "datetime": DATETIME,
+    }
+)
 
 StrPath = BasePattern(
-    model=PatternModel.TYPE_CONVERT, origin=Path, alias="path", accepts=[str]
+    model=MatchMode.TYPE_CONVERT, origin=Path, alias="path", accepts=[str]
 )
 PathFile = BasePattern(
-    model=PatternModel.TYPE_CONVERT,
+    model=MatchMode.TYPE_CONVERT,
     origin=bytes,
     alias="file",
     accepts=[Path],
@@ -169,18 +111,18 @@ PathFile = BasePattern(
 )
 
 INTEGER = BasePattern(
-    r"(\-?\d+)", PatternModel.REGEX_CONVERT, int, lambda _, x: int(x), "int"
+    r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x), "int"
 )
 """整形数表达式，只能接受整数样式的量"""
 
 FLOAT = BasePattern(
-    r"(\-?\d+\.?\d*)", PatternModel.REGEX_CONVERT, float, lambda _, x: float(x), "float"
+    r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x), "float"
 )
 """浮点数表达式"""
 
 NUMBER = BasePattern(
     r"(\-?\d+\.?\d*)",
-    PatternModel.TYPE_CONVERT,
+    MatchMode.TYPE_CONVERT,
     int,
     lambda _, x: int(float(x)),
     "number",
@@ -190,18 +132,18 @@ NUMBER = BasePattern(
 
 _Bool = BasePattern(
     r"(?i:True|False)",
-    PatternModel.REGEX_CONVERT,
+    MatchMode.REGEX_CONVERT,
     bool,
     lambda _, x: x.lower() == "true",
     "bool",
 )
-_List = BasePattern(r"(\[.+?\])", PatternModel.REGEX_CONVERT, list, alias="list")
-_Tuple = BasePattern(r"(\(.+?\))", PatternModel.REGEX_CONVERT, tuple, alias="tuple")
-_Set = BasePattern(r"(\{.+?\})", PatternModel.REGEX_CONVERT, set, alias="set")
-_Dict = BasePattern(r"(\{.+?\})", PatternModel.REGEX_CONVERT, dict, alias="dict")
-set_converters([PathFile, _String, INTEGER, FLOAT, _Bool, _List, _Tuple, _Set, _Dict])
+_List = BasePattern(r"(\[.+?\])", MatchMode.REGEX_CONVERT, list, alias="list")
+_Tuple = BasePattern(r"(\(.+?\))", MatchMode.REGEX_CONVERT, tuple, alias="tuple")
+_Set = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, set, alias="set")
+_Dict = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, dict, alias="dict")
 
-pattern_map["number"] = NUMBER
+global_patterns().sets([PathFile, _String, INTEGER, FLOAT, _Bool, _List, _Tuple, _Set, _Dict])
+global_patterns()["number"] = NUMBER
 
 
 def _generic_parser(item: GenericAlias, extra: str):
@@ -237,13 +179,13 @@ def _generic_parser(item: GenericAlias, extra: str):
 
 
 def _typevar_parser(item: TypeVar):
-    return BasePattern(model=PatternModel.KEEP, origin=Any, alias=f'{item}'[1:], accepts=[item])  # type: ignore
+    return BasePattern(model=MatchMode.KEEP, origin=Any, alias=f'{item}'[1:], accepts=[item])  # type: ignore
 
 
 def _protocol_parser(item: type):
     if not getattr(item, '_is_runtime_protocol', True):  # pragma: no cover
         item = runtime_checkable(deepcopy(item))  # type: ignore
-    return BasePattern(model=PatternModel.KEEP, origin=Any, alias=f'{item}', accepts=[item])
+    return BasePattern(model=MatchMode.KEEP, origin=Any, alias=f'{item}', accepts=[item])
 
 
 def type_parser(item: Any, extra: str = "allow"):
@@ -251,7 +193,7 @@ def type_parser(item: Any, extra: str = "allow"):
     if isinstance(item, BasePattern) or item is AllParam:
         return item
     with suppress(TypeError):
-        if pat := pattern_map.get(item, None):
+        if item and (pat := all_patterns().get(item, None)):
             return pat
     if not inspect.isclass(item) and isinstance(item, GenericAlias):
         return _generic_parser(item, extra)
@@ -271,14 +213,14 @@ def type_parser(item: Any, extra: str = "allow"):
             else [anno],
             origin=Any if sig.return_annotation == Empty else sig.return_annotation,
             converter=item if len(sig.parameters) == 2 else lambda _, x: item(x),
-            model=PatternModel.TYPE_CONVERT,
+            model=MatchMode.TYPE_CONVERT,
         )
     if isinstance(item, str):
         if item.startswith("re:"):
             return RegexPattern(item[3:])
         if "|" in item:
             names = item.split("|")
-            return UnionPattern(pattern_map.get(i, i) for i in names if i)
+            return UnionPattern(all_patterns().get(i, i) for i in names if i)
         return BasePattern(item, alias=f"'{item}'")
     if isinstance(
         item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)
@@ -287,7 +229,7 @@ def type_parser(item: Any, extra: str = "allow"):
             map(lambda x: type_parser(x) if inspect.isclass(x) else x, item)
         )
     if isinstance(item, (dict, ABCMap, ABCMuMap)):
-        return SwitchPattern(item)
+        return SwitchPattern(dict(item))
     if item is None or type(None) == item:
         return Empty
     if extra == "ignore":
@@ -311,9 +253,9 @@ class Bind:
                 "Bind[...] should be used with only two arguments (a type and an annotation)."
             )
         if not (
-                pattern := params[0]
-                if isinstance(params[0], BasePattern)
-                else pattern_map.get(params[0])
+            pattern := params[0]
+            if isinstance(params[0], BasePattern)
+            else all_patterns().get(params[0])
         ):
             raise ValueError("Bind[...] first argument should be a BasePattern.")
         if not all(callable(i) or isinstance(i, str) for i in params[1:]):
@@ -330,10 +272,7 @@ class Bind:
 
 __all__ = [
     "Bind",
-    "pattern_map",
-    "set_converter",
-    "set_converters",
-    "remove_converter",
+    "AnyString",
     "type_parser",
     "AnyOne",
     "StrPath",

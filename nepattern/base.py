@@ -4,7 +4,7 @@ import re
 from typing import Iterable, Any, Literal, TypeVar, Dict, Union
 
 from .config import lang
-from .core import BasePattern, PatternModel
+from .core import BasePattern, MatchMode
 from .exception import MatchFailed
 from .util import Empty
 
@@ -49,7 +49,7 @@ class UnionPattern(BasePattern):
             [repr(a) for a in self.for_validate] + [repr(a) for a in self.for_equal]
         )
         super().__init__(
-            r"(.+?)", PatternModel.KEEP, str, alias=alias_content, anti=anti
+            r"(.+?)", MatchMode.KEEP, str, alias=alias_content, anti=anti
         )
 
     def match(self, text: str | Any):
@@ -106,15 +106,15 @@ class SequencePattern(BasePattern[TSeq]):
         self._mode = "all"
         if form is list:
             super().__init__(
-                r"\[(.+?)\]", PatternModel.REGEX_MATCH, form, alias=f"list[{base}]"
+                r"\[(.+?)\]", MatchMode.REGEX_MATCH, form, alias=f"list[{base}]"
             )
         elif form is tuple:
             super().__init__(
-                r"\((.+?)\)", PatternModel.REGEX_MATCH, form, alias=f"tuple[{base}]"
+                r"\((.+?)\)", MatchMode.REGEX_MATCH, form, alias=f"tuple[{base}]"
             )
         elif form is set:
             super().__init__(
-                r"\{(.+?)\}", PatternModel.REGEX_MATCH, form, alias=f"set[{base}]"
+                r"\{(.+?)\}", MatchMode.REGEX_MATCH, form, alias=f"set[{base}]"
             )
         else:
             raise ValueError(lang.sequence_form_error.format(target=str(form)))
@@ -173,7 +173,7 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
         self._mode = "all"
         super().__init__(
             r"\{(.+?)\}",
-            PatternModel.REGEX_MATCH,
+            MatchMode.REGEX_MATCH,
             dict,
             alias=f"dict[{self.key}, {self.value}]",
         )
@@ -229,20 +229,19 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
 
 
 _TCase = TypeVar("_TCase")
-_TSwitch = TypeVar("_TSwitch")
 
 
 class SwitchPattern(BasePattern[_TCase]):
-    switch: dict[_TSwitch | ellipsis, _TCase]
+    switch: dict[Any, _TCase]
 
-    def __init__(self, data: dict[_TSwitch | ellipsis, _TCase]):
+    def __init__(self, data: dict[Any | ellipsis, _TCase]):
         self.switch = data
-        super().__init__("", PatternModel.TYPE_CONVERT, type(list(data.values())[0]))
+        super().__init__("", MatchMode.TYPE_CONVERT, type(list(data.values())[0]))
 
     def __repr__(self):
         return "|".join(f"{k}" for k in self.switch if k != Ellipsis)
 
-    def match(self, input_: _TSwitch):
+    def match(self, input_: Any) -> _TCase:
         try:
             return self.switch[input_]
         except KeyError as e:

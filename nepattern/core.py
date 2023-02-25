@@ -10,7 +10,7 @@ from typing import (
     Generic,
     overload,
 )
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 try:
     from typing import Annotated, Self, get_origin  # type: ignore
@@ -32,7 +32,7 @@ def _accept(
     return res_t or res_p
 
 
-class PatternModel(IntEnum):
+class MatchMode(IntEnum):
     """参数表达式匹配模式"""
 
     REGEX_CONVERT = 3
@@ -64,14 +64,22 @@ TDefault = TypeVar("TDefault")
 
 @dataclass
 class ValidateResult(Generic[TVOrigin]):
-    value: TVOrigin
-    flag: ResultFlag
+    _value: TVOrigin | type[Empty] = field(default=Empty)
+    _error: Exception | type[Empty] = field(default=Empty)
+    flag: ResultFlag = field(default=ResultFlag.VALID)
+
+    @property
+    def value(self) -> TVOrigin:
+        if self.flag == ResultFlag.ERROR or self._value == Empty:
+            raise RuntimeError("cannot access value")
+        return self._value
+
 
     @property
     def error(self) -> Exception | None:
-        if self.flag == ResultFlag.ERROR:
-            assert isinstance(self.value, Exception)
-            return self.value
+        if self.flag == ResultFlag.ERROR and self._error != Empty:
+            assert isinstance(self._error, Exception)
+            return self._error
 
     @property
     def success(self) -> bool:
@@ -90,9 +98,7 @@ class ValidateResult(Generic[TVOrigin]):
         ...
 
     @overload
-    def step(
-        self, other: Callable[[TVOrigin], T]
-    ) -> T | Self:
+    def step(self, other: Callable[[TVOrigin], T]) -> T | Self:
         ...
 
     @overload
@@ -115,9 +121,7 @@ class ValidateResult(Generic[TVOrigin]):
         ...
 
     @overload
-    def __rshift__(
-        self, other: Callable[[TVOrigin], T]
-    ) -> T | Self:
+    def __rshift__(self, other: Callable[[TVOrigin], T]) -> T | Self:
         ...
 
     @overload
@@ -138,21 +142,21 @@ class BasePattern(Generic[TOrigin]):
 
     regex_pattern: TPattern  # type: ignore
     pattern: str
-    model: PatternModel
+    mode: MatchMode
     converter: Callable[[BasePattern[TOrigin], str | Any], TOrigin]
     validators: list[Callable[[TOrigin], bool]]
 
     anti: bool
     origin: type[TOrigin]
-    pattern_accepts: list[BasePattern] | None
-    type_accepts: list[type] | None
+    pattern_accepts: list[BasePattern]
+    type_accepts: list[type]
     alias: str | None
     previous: BasePattern | None
 
     __slots__ = (
         "regex_pattern",
         "pattern",
-        "model",
+        "mode",
         "converter",
         "anti",
         "origin",
@@ -165,8 +169,8 @@ class BasePattern(Generic[TOrigin]):
 
     def __init__(
         self,
-        pattern: str = "(.+?)",
-        model: int | PatternModel = PatternModel.REGEX_MATCH,
+        pattern: str = ".+",
+        model: int | MatchMode = MatchMode.REGEX_MATCH,
         origin: type[TOrigin] = str,
         converter: Callable[[BasePattern[TOrigin], str | Any], TOrigin] | None = None,
         alias: str | None = None,
@@ -182,27 +186,27 @@ class BasePattern(Generic[TOrigin]):
             raise ValueError(lang.pattern_head_or_tail_error.format(target=pattern))
         self.pattern = pattern
         self.regex_pattern = re.compile(f"^{pattern}$")
-        self.model = PatternModel(model)
+        self.mode = MatchMode(model)
         self.origin = origin
         self.alias = alias
         self.previous = previous
         accepts = accepts or []
         self.pattern_accepts = list(
-            filter(lambda x: isinstance(x, BasePattern), accepts)
+            filter(lambda x: isinstance(x, BasePattern), accepts)  # type: ignore
         )
         self.type_accepts = list(
-            filter(lambda x: not isinstance(x, BasePattern), accepts)
+            filter(lambda x: not isinstance(x, BasePattern), accepts)  # type: ignore
         )
         self.converter = converter or (
             lambda _, x: (get_origin(origin) or origin)(x)
-            if model == PatternModel.TYPE_CONVERT
+            if model == MatchMode.TYPE_CONVERT
             else eval(x)
         )
         self.validators = validators or []
         self.anti = anti
 
     def __repr__(self):
-        if self.model == PatternModel.KEEP:
+        if self.mode == MatchMode.KEEP:
             if self.alias:
                 return self.alias
             return (
@@ -212,9 +216,9 @@ class BasePattern(Generic[TOrigin]):
 
         if not self.alias:
             name = getattr(self.origin, "__name__", str(self.origin))
-            if self.model == PatternModel.REGEX_MATCH:
+            if self.mode == MatchMode.REGEX_MATCH:
                 text = self.pattern
-            elif self.model == PatternModel.REGEX_CONVERT or (
+            elif self.mode == MatchMode.REGEX_CONVERT or (
                 not self.type_accepts and not self.pattern_accepts
             ):
                 text = name
@@ -246,7 +250,7 @@ class BasePattern(Generic[TOrigin]):
     def of(unit: type[TOrigin]) -> BasePattern[TOrigin]:
         """提供 Type[DataUnit] 类型的构造方法"""
         return BasePattern(
-            "", PatternModel.KEEP, unit, alias=unit.__name__, accepts=[unit]
+            "", MatchMode.KEEP, unit, alias=unit.__name__, accepts=[unit]
         )
 
     @staticmethod
@@ -254,7 +258,7 @@ class BasePattern(Generic[TOrigin]):
         """提供 DataUnit 类型的构造方法"""
         return BasePattern(
             "",
-            PatternModel.KEEP,
+            MatchMode.KEEP,
             type(obj),
             alias=str(obj),
             validators=[lambda x: x == obj],
@@ -275,22 +279,24 @@ class BasePattern(Generic[TOrigin]):
 
     def prefixed(self):
         """让表达式能在某些场景下实现前缀匹配; 返回自身的拷贝"""
-        if self.model in (PatternModel.REGEX_MATCH, PatternModel.REGEX_CONVERT):
-            self.regex_pattern = re.compile(f"^{self.pattern}")
-        return deepcopy(self)
+        cp_self = deepcopy(self)
+        if self.mode in (MatchMode.REGEX_MATCH, MatchMode.REGEX_CONVERT):
+            cp_self.regex_pattern = re.compile(f"^{self.pattern}")
+        return cp_self
 
     def suffixed(self):
         """让表达式能在某些场景下实现后缀匹配; 返回自身的拷贝"""
-        if self.model in (PatternModel.REGEX_MATCH, PatternModel.REGEX_CONVERT):
-            self.regex_pattern = re.compile(f"{self.pattern}$")
-        return deepcopy(self)
+        cp_self = deepcopy(self)
+        if self.mode in (MatchMode.REGEX_MATCH, MatchMode.REGEX_CONVERT):
+            cp_self.regex_pattern = re.compile(f".*?({self.pattern})$")
+        return cp_self
 
     def match(self, input_: str | Any) -> TOrigin:
         """
         对传入的参数进行匹配, 如果匹配成功, 则返回转换后的值, 否则返回None
         """
         if (
-            self.model > 0
+            self.mode > 0
             and self.origin not in (str, Any)
             and generic_isinstance(input_, self.origin)
         ):
@@ -304,9 +310,9 @@ class BasePattern(Generic[TOrigin]):
                 self.type_accepts,
             ):  # pragma: no cover
                 raise MatchFailed(lang.type_error.format(target=input_.__class__))
-        if self.model == PatternModel.KEEP:
+        if self.mode == MatchMode.KEEP:
             return input_  # type: ignore
-        if self.model == PatternModel.TYPE_CONVERT:
+        if self.mode == MatchMode.TYPE_CONVERT:
             res = self.converter(self, input_)
             if res is None and self.origin == Any:  # pragma: no cover
                 raise MatchFailed(lang.content_error.format(target=input_))
@@ -321,25 +327,21 @@ class BasePattern(Generic[TOrigin]):
                 input_ := self.previous.match(input_), str
             ):
                 raise MatchFailed(lang.type_error.format(target=type(input_)))
-        if r := self.regex_pattern.findall(input_):
-            res = r[0][0] if isinstance(r[0], tuple) else r[0]
+        if mat := self.regex_pattern.match(input_):
+            glen = len(mat.groups())
             return (
-                self.converter(self, res)
-                if self.model == PatternModel.REGEX_CONVERT
-                else res
+                self.converter(self, mat[1] if glen > 0 else mat[0])
+                if self.mode == MatchMode.REGEX_CONVERT
+                else mat[1] if glen > 0 else mat[0]
             )
         raise MatchFailed(lang.content_error.format(target=input_))
 
     @overload
-    def validate(
-        self, input_: str | Any
-    ) -> ValidateResult[TOrigin | Exception]:
+    def validate(self, input_: str | Any) -> ValidateResult[TOrigin | Exception]:
         ...
 
     @overload
-    def validate(
-        self, input_: str | Any, default: TDefault
-    ) -> ValidateResult[TOrigin | TDefault]:
+    def validate(self, input_: str | Any, default: TDefault) -> ValidateResult[TOrigin | TDefault]:
         ...
 
     def validate(  # type: ignore
@@ -355,24 +357,20 @@ class BasePattern(Generic[TOrigin]):
             for i in self.validators:
                 if not i(res):
                     raise MatchFailed(lang.content_error.format(target=input_))
-            return ValidateResult(res, ResultFlag.VALID)
+            return ValidateResult(_value=res, flag=ResultFlag.VALID)
         except Exception as e:
             if default is None:
-                return ValidateResult(e, ResultFlag.ERROR)
+                return ValidateResult(_error=e, flag=ResultFlag.ERROR)
             return ValidateResult(
-                None if default is Empty else default, ResultFlag.DEFAULT
+                _value=None if default is Empty else default, flag=ResultFlag.DEFAULT  # type: ignore
             )
 
     @overload
-    def invalidate(
-        self, input_: str | Any
-    ) -> ValidateResult[Any | Exception]:
+    def invalidate(self, input_: str | Any) -> ValidateResult[Any | Exception]:
         ...
 
     @overload
-    def invalidate(
-        self, input_: str | Any, default: TDefault
-    ) -> ValidateResult[Any | TDefault]:
+    def invalidate(self, input_: str | Any, default: TDefault) -> ValidateResult[Any | TDefault]:
         ...
 
     def invalidate(
@@ -386,21 +384,29 @@ class BasePattern(Generic[TOrigin]):
         try:
             res = self.match(input_)
         except MatchFailed:
-            return ValidateResult(input_, ResultFlag.VALID)
+            return ValidateResult(_value=input_, flag=ResultFlag.VALID)
         else:
             for i in self.validators:
                 if not i(res):
-                    return ValidateResult(input_, ResultFlag.VALID)
+                    return ValidateResult(_value=input_, flag=ResultFlag.VALID)
             if default is None:
                 return ValidateResult(
-                    MatchFailed(lang.content_error.format(target=input_)),
-                    ResultFlag.ERROR,
+                    _error=MatchFailed(lang.content_error.format(target=input_)),
+                    flag=ResultFlag.ERROR,
                 )
             return ValidateResult(
-                None if default is Empty else default, ResultFlag.DEFAULT
+                _value=None if default is Empty else default, flag=ResultFlag.DEFAULT
             )
 
-    def __call__(self, input_: str | Any, default: TDefault | None = None):
+
+    @overload
+    def __call__(self, input_: str | Any) -> ValidateResult[TOrigin]:
+        ...
+
+    @overload
+    def __call__(self, input_: str | Any, default: TDefault) -> ValidateResult[TOrigin | TDefault]:
+        ...
+    def __call__(self, input_: str | Any, default: TDefault | None = None) -> ValidateResult[TOrigin | TDefault | None]:
         """
         依据 anti 值 自动选择验证方式
         """
@@ -430,4 +436,4 @@ def set_unit(
     return Annotated[target, predicate]
 
 
-__all__ = ["PatternModel", "BasePattern", "set_unit", "ValidateResult", "TOrigin"]
+__all__ = ["MatchMode", "BasePattern", "set_unit", "ValidateResult", "TOrigin"]

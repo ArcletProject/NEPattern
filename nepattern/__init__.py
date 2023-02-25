@@ -1,32 +1,33 @@
-from .core import BasePattern, PatternModel, set_unit, ValidateResult
+from .base import (
+    MappingPattern,
+    RegexPattern,
+    SequencePattern,
+    SwitchPattern,
+    UnionPattern,
+)
+from .config import lang
+from .context import (
+    Patterns,
+    all_patterns,
+    create_local_patterns,
+    local_patterns,
+    switch_local_patterns,
+)
+from .core import BasePattern, MatchMode, ValidateResult, set_unit
+from .exception import MatchFailed
 from .main import (
-    type_parser,
-    pattern_map,
-    set_converter,
-    set_converters,
-    remove_converter,
-    AnyOne,
-    Bind,
-    NUMBER,
+    DATETIME,
+    EMAIL,
+    FLOAT,
     HEX,
     HEX_COLOR,
-    EMAIL,
-    DATETIME,
-    IP,
-    URL,
     INTEGER,
-    FLOAT,
+    IP,
+    NUMBER,
+    URL,
+    AnyOne,
+    AnyString,
+    Bind,
+    type_parser,
 )
-from .base import UnionPattern, SequencePattern, MappingPattern, RegexPattern, SwitchPattern
-from .util import Empty, AllParam, generic_isinstance
-from .exception import MatchFailed
-from .config import lang
-
-
-# backport
-
-UnionArg = UnionPattern
-MappingArg = MappingPattern
-SequenceArg = SequencePattern
-RegexArg = RegexPattern
-SwitchArg = SwitchPattern
+from .util import AllParam, Empty, TPattern, generic_isinstance
