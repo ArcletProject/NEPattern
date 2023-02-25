@@ -146,12 +146,12 @@ global_patterns().sets([PathFile, _String, INTEGER, FLOAT, _Bool, _List, _Tuple,
 global_patterns()["number"] = NUMBER
 
 
-def _generic_parser(item: GenericAlias, extra: str):
+def _generic_parser(item: GenericAlias, extra: str) -> BasePattern:
     origin = get_origin(item)
     if origin is Annotated:
         org, *meta = get_args(item)
         if not isinstance(_o := type_parser(org, extra), BasePattern):  # type: ignore  # pragma: no cover
-            return _o
+            raise TypeError(_o)
         _arg = deepcopy(_o)
         _arg.alias = (
             al[-1] if (al := [i for i in meta if isinstance(i, str)]) else _arg.alias
@@ -160,7 +160,7 @@ def _generic_parser(item: GenericAlias, extra: str):
         return _arg
     if origin in _Contents:
         _args = {type_parser(t, extra) for t in get_args(item)}
-        return (_args.pop() if len(_args) == 1 else UnionPattern(_args)) if _args else item
+        return (_args.pop() if len(_args) == 1 else UnionPattern(_args)) if _args else AnyOne
     if origin in (dict, ABCMap, ABCMuMap):
         if args := get_args(item):
             return MappingPattern(
@@ -188,15 +188,16 @@ def _protocol_parser(item: type):
     return BasePattern(model=MatchMode.KEEP, origin=Any, alias=f'{item}', accepts=[item])
 
 
-def type_parser(item: Any, extra: str = "allow"):
+def type_parser(item: Any, extra: str = "allow") -> BasePattern:
     """对数类型的检查， 将一般数据类型转为 BasePattern 或者特殊类型"""
     if isinstance(item, BasePattern) or item is AllParam:
         return item
     with suppress(TypeError):
         if item and (pat := all_patterns().get(item, None)):
             return pat
-    if not inspect.isclass(item) and isinstance(item, GenericAlias):
-        return _generic_parser(item, extra)
+    with suppress(TypeError):
+        if not inspect.isclass(item) and isinstance(item, GenericAlias):
+            return _generic_parser(item, extra)
     if isinstance(item, TypeVar):
         return _typevar_parser(item)
     if inspect.isclass(item) and getattr(item, "_is_protocol", False):
@@ -231,7 +232,7 @@ def type_parser(item: Any, extra: str = "allow"):
     if isinstance(item, (dict, ABCMap, ABCMuMap)):
         return SwitchPattern(dict(item))
     if item is None or type(None) == item:
-        return Empty
+        return Empty  # type: ignore
     if extra == "ignore":
         return AnyOne
     elif extra == "reject":

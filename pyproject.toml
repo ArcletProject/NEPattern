@@ -54,9 +54,10 @@ test = {composite = ["coverage run -m pytest -vv", "coverage xml", "coverage rep
 [tool.coverage.run]
 branch = true
 source = ["."]
-omit = ["test.py"]
+omit = ["test.py", "./nepattern/context.pyi"]
 
 [tool.coverage.report]
+
 # Regexes for lines to exclude from consideration
 exclude_lines = [
     # standard pragma

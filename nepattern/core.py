@@ -72,7 +72,7 @@ class ValidateResult(Generic[TVOrigin]):
     def value(self) -> TVOrigin:
         if self.flag == ResultFlag.ERROR or self._value == Empty:
             raise RuntimeError("cannot access value")
-        return self._value
+        return self._value  # type: ignore
 
 
     @property
@@ -102,12 +102,12 @@ class ValidateResult(Generic[TVOrigin]):
         ...
 
     @overload
-    def step(self, other: BasePattern[T]) -> ValidateResult[T | Exception]:
+    def step(self, other: BasePattern[T]) -> ValidateResult[T]:
         ...
 
     def step(
         self, other: type[T] | Callable[[TVOrigin], T] | Any | BasePattern[T]
-    ) -> T | Self | ValidateResult[T | Exception]:
+    ) -> T | Self | ValidateResult[T]:
         if other is bool:
             return self.success  # type: ignore
         if callable(other) and self.success:
@@ -125,13 +125,13 @@ class ValidateResult(Generic[TVOrigin]):
         ...
 
     @overload
-    def __rshift__(self, other: BasePattern[T]) -> ValidateResult[T | Exception]:
+    def __rshift__(self, other: BasePattern[T]) -> ValidateResult[T]:
         ...
 
     def __rshift__(
         self, other: type[T] | Callable[[TVOrigin], T] | Any
-    ) -> T | Self | ValidateResult[T | Exception]:
-        return self.step(other)
+    ) -> T | Self | ValidateResult[T]:
+        return self.step(other)  # type: ignore
 
     def __bool__(self):
         return self.success
@@ -337,16 +337,16 @@ class BasePattern(Generic[TOrigin]):
         raise MatchFailed(lang.content_error.format(target=input_))
 
     @overload
-    def validate(self, input_: str | Any) -> ValidateResult[TOrigin | Exception]:
+    def validate(self, input_: Any) -> ValidateResult[TOrigin]:
         ...
 
     @overload
-    def validate(self, input_: str | Any, default: TDefault) -> ValidateResult[TOrigin | TDefault]:
+    def validate(self, input_: Any, default: TDefault) -> ValidateResult[TOrigin | TDefault]:
         ...
 
     def validate(  # type: ignore
-        self, input_: str | Any, default: TDefault | None = None
-    ) -> ValidateResult[TOrigin | Exception | TDefault]:
+        self, input_: Any, default: TDefault | None = None
+    ) -> ValidateResult[TOrigin | TDefault]:
         """
         对传入的值进行正向验证，返回可能的匹配与转化结果。
 
@@ -366,16 +366,16 @@ class BasePattern(Generic[TOrigin]):
             )
 
     @overload
-    def invalidate(self, input_: str | Any) -> ValidateResult[Any | Exception]:
+    def invalidate(self, input_: Any) -> ValidateResult[Any]:
         ...
 
     @overload
-    def invalidate(self, input_: str | Any, default: TDefault) -> ValidateResult[Any | TDefault]:
+    def invalidate(self, input_: Any, default: TDefault) -> ValidateResult[Any | TDefault]:
         ...
 
     def invalidate(
-        self, input_: str | Any, default: TDefault | None = None
-    ) -> ValidateResult[Any | Exception | TDefault]:
+        self, input_: Any, default: TDefault | None = None
+    ) -> ValidateResult[Any | TDefault]:
         """
         对传入的值进行反向验证，返回可能的匹配与转化结果。
 
@@ -400,13 +400,13 @@ class BasePattern(Generic[TOrigin]):
 
 
     @overload
-    def __call__(self, input_: str | Any) -> ValidateResult[TOrigin]:
+    def __call__(self, input_: Any) -> ValidateResult[TOrigin]:
         ...
 
     @overload
-    def __call__(self, input_: str | Any, default: TDefault) -> ValidateResult[TOrigin | TDefault]:
+    def __call__(self, input_: Any, default: TDefault) -> ValidateResult[TOrigin | TDefault]:
         ...
-    def __call__(self, input_: str | Any, default: TDefault | None = None) -> ValidateResult[TOrigin | TDefault | None]:
+    def __call__(self, input_: Any, default: TDefault | None = None) -> ValidateResult[TOrigin | TDefault | None]:  # type: ignore
         """
         依据 anti 值 自动选择验证方式
         """
@@ -433,7 +433,7 @@ def set_unit(
     target: type[TOrigin], predicate: Callable[..., bool]
 ) -> Annotated[TOrigin, ...]:
     """通过predicate区分同一个类的不同情况"""
-    return Annotated[target, predicate]
+    return Annotated[target, predicate]  # type: ignore
 
 
 __all__ = ["MatchMode", "BasePattern", "set_unit", "ValidateResult", "TOrigin"]

@@ -110,8 +110,17 @@ def switch_local_patterns(name: str):
     _ctx_token = pattern_ctx.set(target)
 
 
+def reset_local_patterns():
+    global _ctx_token
+
+    target = _ctx["$global"]
+    pattern_ctx.reset(_ctx_token)
+    _ctx_token = pattern_ctx.set(target)
+
+
 def local_patterns():
-    return pattern_ctx.get()
+    local = pattern_ctx.get()
+    return local if local.name != "$global" else Patterns("$temp")
 
 
 def global_patterns():
@@ -122,7 +131,7 @@ def all_patterns():
     """获取 global 与 local 的合并表达式组"""
     new = Patterns("$temp")
     local = local_patterns()
-    if local.name != "$global":
+    if not local.name.startswith("$"):
         new.update(local_patterns().data)
     new.update(global_patterns().data)
     return new
@@ -135,4 +144,5 @@ __all__ = [
     "all_patterns",
     "switch_local_patterns",
     "create_local_patterns",
+    "reset_local_patterns",
 ]

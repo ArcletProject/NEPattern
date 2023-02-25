@@ -1,6 +1,28 @@
 from nepattern import *
 
 
+def test_result():
+    res = NUMBER.validate(123)
+    assert res.success
+    assert not res.failed
+    assert not res.or_default
+    assert not res.error
+    res1 = NUMBER.validate([], -1)
+    assert res1.or_default
+    assert not res1.failed
+    assert not res1.success
+    assert not res.error
+    res2 = NUMBER.validate([])
+    assert res2.error
+    assert not res2.or_default
+    assert not res2.success
+    assert res2.error
+    try:
+        res2.value
+    except RuntimeError as e:
+        print(e)
+
+
 def test_pattern_of():
     """测试 BasePattern 的快速创建方法之一, 对类有效"""
     pat = BasePattern.of(int)
@@ -263,20 +285,27 @@ def test_map_pattern():
 
 
 def test_generic_isinstance():
-    from typing import Union, List, TypeVar
+    from typing import Union, List, TypeVar, Any, Literal, Dict
     from typing_extensions import Annotated
 
     S = TypeVar("S", bound=str)
+    assert generic_isinstance("a", Any)
     assert generic_isinstance(1, int)
     assert generic_isinstance(1, Union[str, int])
+    assert generic_isinstance(123, Literal[123])
     assert generic_isinstance([1], List[int])
     assert generic_isinstance(1, Annotated[int, lambda x: x > 0])
     assert generic_isinstance("a", S)
+    assert generic_isinstance(1, (int, str))
+    assert generic_isinstance('a', (int, str))
+    assert not generic_isinstance(bool, (str, list))
+    assert not generic_isinstance({123}, Dict[str, str])
 
 
 def test_converters():
     pattern_map = all_patterns()
     print(pattern_map)
+    assert pattern_map["any_str"].validate(123456).value == "123456"
     assert pattern_map["email"].validate("example@outlook.com").success
     assert pattern_map["ip"].validate("192.168.0.1").success
     assert pattern_map["url"].validate("https://www.example.com").success
@@ -332,7 +361,7 @@ def test_bind():
         print(e)
 
     try:
-        Bind[int, int]
+        Bind[int, 1]
     except TypeError as e:
         print(e)
 
@@ -343,7 +372,7 @@ def test_bind():
 def test_prefix():
     from typing import List, Dict
 
-    pat15 = BasePattern.to(int).prefixed()
+    pat15 = INTEGER.prefixed()
     assert pat15.validate("123add").value == 123
     assert pat15.validate("add123").failed
     pat15_1 = type_parser(["abc", "dba", 1.0, int]).prefixed()
@@ -365,7 +394,7 @@ def test_prefix():
 def test_suffix():
     from typing import List, Dict
 
-    pat16 = BasePattern.to(int).suffixed()
+    pat16 = INTEGER.suffixed()
     assert pat16.validate("add123").value == 123
     assert pat16.validate("123add").failed
     pat16_1 = type_parser(["abc", "dba", 1.0, int]).suffixed()
@@ -415,6 +444,33 @@ def test_switch_pattern():
     pat19_1 = SwitchPattern({"foo": 1, "bar": 2, ...: 3})
     assert pat19_1.validate("foo").value == 1
     assert pat19_1.validate("baz").value == 3
+
+
+def test_patterns():
+    temp = create_local_patterns("temp", {"a": BasePattern("A")})
+    assert temp["a"]
+    assert local_patterns() == temp
+    assert all_patterns()["a"]
+    temp1 = create_local_patterns("temp1", {"b": BasePattern("B")}, set_current=False)
+    assert temp1["b"]
+    assert not local_patterns().get("b")
+    switch_local_patterns("temp1")
+    assert local_patterns()["b"]
+    assert not local_patterns().get("a")
+    switch_local_patterns("temp")
+    assert local_patterns()["a"]
+    assert not local_patterns().get("b")
+    reset_local_patterns()
+
+    try:
+        create_local_patterns("$temp")
+    except ValueError as e:
+        print(e)
+
+    try:
+        switch_local_patterns("$temp")
+    except ValueError as e:
+        print(e)
 
 
 if __name__ == "__main__":

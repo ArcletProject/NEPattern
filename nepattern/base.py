@@ -13,7 +13,7 @@ class RegexPattern(BasePattern[Union[dict, tuple]]):
     """针对正则的特化匹配，支持正则组"""
 
     def __init__(self, pattern: str, alias: str | None = None):
-        super().__init__(pattern, origin=Union[dict, tuple], alias=alias or 'regex[:group]')
+        super().__init__(pattern, origin=Union[dict, tuple], alias=alias or 'regex[:group]')  # type: ignore
 
     def match(self, input_: str | Any):
         if not isinstance(input_, str):
@@ -73,7 +73,7 @@ class UnionPattern(BasePattern):
         return UnionPattern(
             [pat.prefixed() for pat in self.for_validate]
             + [
-                type_parser(eq).prefixed() if isinstance(eq, str) else eq
+                type_parser(eq).prefixed() if isinstance(eq, str) else eq  # type: ignore
                 for eq in self.for_equal
             ],
             self.anti,
@@ -85,7 +85,7 @@ class UnionPattern(BasePattern):
         return UnionPattern(
             [pat.suffixed() for pat in self.for_validate]
             + [
-                type_parser(eq).suffixed() if isinstance(eq, str) else eq
+                type_parser(eq).suffixed() if isinstance(eq, str) else eq  # type: ignore
                 for eq in self.for_equal
             ],
             self.anti,
