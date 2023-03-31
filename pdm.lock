@@ -77,6 +77,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tarina"
+version = "0.1.0"
+requires_python = ">=3.8"
+summary = "A collection of common utils for Arclet"
+dependencies = [
+    "typing-extensions>=4.4.0",
+]
+
+[[package]]
 name = "tokenize-rt"
 version = "5.0.0"
 requires_python = ">=3.7"
@@ -96,7 +105,7 @@ summary = "Backported and Experimental Type Hints for Python 3.7+"
 
 [metadata]
 lock_version = "4.1"
-content_hash = "sha256:88892b4b84f93e4a6a5d63239198250bcb68ea8fbd782e3dee88de2faa376050"
+content_hash = "sha256:178f661022b7fcf9031a9584c8392ad9921b5cb9ab12124e15f281605f2b03ec"
 
 [metadata.files]
 "attrs 22.1.0" = [
@@ -186,6 +195,10 @@ content_hash = "sha256:88892b4b84f93e4a6a5d63239198250bcb68ea8fbd782e3dee88de2fa
 "pytest 7.1.3" = [
     {url = "https://files.pythonhosted.org/packages/a4/a7/8c63a4966935b0d0b039fd67ebf2e1ae00f1af02ceb912d838814d772a9a/pytest-7.1.3.tar.gz", hash = "sha256:4f365fec2dff9c1162f834d9f18af1ba13062db0c708bf7b946f8a5c76180c39"},
     {url = "https://files.pythonhosted.org/packages/e3/b9/3541bbcb412a9fd56593005ff32183825634ef795a1c01ceb6dee86e7259/pytest-7.1.3-py3-none-any.whl", hash = "sha256:1377bda3466d70b55e3f5cecfa55bb7cfcf219c7964629b967c37cf0bda818b7"},
+]
+"tarina 0.1.0" = [
+    {url = "https://files.pythonhosted.org/packages/76/d5/4be58efd4ff6efb4c65958e13d08dd9ce5ec1dd35c8c107973f56730dcd3/tarina-0.1.0.tar.gz", hash = "sha256:4deb38df560b4985d3dde50b8c1916c563da7712f44ef5e50874a92a12b70a88"},
+    {url = "https://files.pythonhosted.org/packages/7c/25/4ca6a7f3e41fc5ce3fb7c3206f34be9c346e00b67d90751190c202efeaff/tarina-0.1.0-py3-none-any.whl", hash = "sha256:ee3fcadc039f4a727b4bacdf86e23814593028a9e354575c7eef3147c9c73c9e"},
 ]
 "tokenize-rt 5.0.0" = [
     {url = "https://files.pythonhosted.org/packages/40/01/fb40ea8c465f680bf7aa3f5bee39c62ba8b7f52c38048c27aa95aff4f779/tokenize_rt-5.0.0.tar.gz", hash = "sha256:3160bc0c3e8491312d0485171dea861fc160a240f5f5766b72a1165408d10740"},

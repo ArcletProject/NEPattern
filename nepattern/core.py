@@ -11,6 +11,7 @@ from typing import (
     overload,
 )
 from dataclasses import dataclass, field
+from tarina import Empty, generic_isinstance
 
 try:
     from typing import Annotated, Self, get_origin  # type: ignore
@@ -19,7 +20,7 @@ except ImportError:
 
 from .exception import MatchFailed
 from .config import lang
-from .util import generic_isinstance, TPattern, Empty
+from .util import TPattern
 
 
 def _accept(

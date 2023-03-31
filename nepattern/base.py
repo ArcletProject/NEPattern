@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import re
 from typing import Iterable, Any, Literal, TypeVar, Dict, Union
+from tarina import Empty
 
 from .config import lang
 from .core import BasePattern, MatchMode
 from .exception import MatchFailed
-from .util import Empty
 
 
 class RegexPattern(BasePattern[Union[dict, tuple]]):

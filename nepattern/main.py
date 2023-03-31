@@ -18,6 +18,7 @@ from functools import lru_cache
 from pathlib import Path
 from types import FunctionType, LambdaType, MethodType
 from typing import Any, Union, Literal, TypeVar, runtime_checkable
+from tarina import Empty
 
 try:
     from typing import Annotated, get_args, get_origin  # type: ignore
@@ -29,7 +30,7 @@ from .config import lang
 from .context import global_patterns, all_patterns
 from .core import BasePattern, MatchMode
 from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern
-from .util import AllParam, Empty, GenericAlias, RawStr
+from .util import AllParam, GenericAlias, RawStr
 
 _Contents = (Union, types.UnionType, Literal) if sys.version_info >= (3, 10) else (Union, Literal)  # pragma: no cover
 

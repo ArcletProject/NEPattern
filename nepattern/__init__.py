@@ -1,3 +1,4 @@
+from tarina import Empty as _Empty  # noqa
 from .base import (
     MappingPattern,
     RegexPattern,
@@ -31,4 +32,4 @@ from .main import (
     Bind,
     type_parser,
 )
-from .util import AllParam, Empty, TPattern, generic_isinstance, RawStr
+from .util import AllParam, TPattern, RawStr

@@ -3,9 +3,10 @@ from __future__ import annotations
 from collections import UserDict
 from contextvars import ContextVar, Token
 from typing import final
+from tarina import Empty
 
 from .base import UnionPattern
-from .util import AllParam, Empty
+from .util import AllParam
 
 
 @final
