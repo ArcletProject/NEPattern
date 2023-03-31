@@ -29,7 +29,7 @@ from .config import lang
 from .context import global_patterns, all_patterns
 from .core import BasePattern, MatchMode
 from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern
-from .util import AllParam, Empty, GenericAlias
+from .util import AllParam, Empty, GenericAlias, RawStr
 
 _Contents = (Union, types.UnionType, Literal) if sys.version_info >= (3, 10) else (Union, Literal)  # pragma: no cover
 
@@ -223,6 +223,8 @@ def type_parser(item: Any, extra: str = "allow") -> BasePattern:
             names = item.split("|")
             return UnionPattern(all_patterns().get(i, i) for i in names if i)
         return BasePattern(item, alias=f"'{item}'")
+    if isinstance(item, RawStr):
+        return BasePattern(item.value, alias=f"'{item.value}'")
     if isinstance(
         item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)
     ):  # Args[foo, [123, int]]

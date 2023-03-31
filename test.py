@@ -473,6 +473,11 @@ def test_patterns():
         print(e)
 
 
+def test_rawstr():
+    assert type_parser("url") == URL
+    assert type_parser(RawStr("url")) == BasePattern("url", alias="'url'")
+
+
 if __name__ == "__main__":
     import pytest
 

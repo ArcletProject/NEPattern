@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import inspect
 import sre_compile
 import sys
@@ -27,6 +28,11 @@ class _All:
 
 
 AllParam = _All()
+
+
+@dataclasses.dataclass
+class RawStr:
+    value: str
 
 
 def generic_isinstance(obj: Any, par: type | Any | tuple[type, ...]) -> bool:

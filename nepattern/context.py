@@ -2,25 +2,19 @@ from __future__ import annotations
 
 from collections import UserDict
 from contextvars import ContextVar, Token
-from typing import Any, Iterable, final
+from typing import final
 
 from .base import UnionPattern
-from .core import BasePattern
 from .util import AllParam, Empty
 
 
 @final
 class Patterns(UserDict):
-    def __init__(self, name: str):
+    def __init__(self, name):
         self.name = name
         super().__init__({"": Empty, "*": AllParam})
 
-    def set(
-        self,
-        target: BasePattern,
-        alias: str | None = None,
-        cover: bool = True,
-    ):
+    def set(self, target, alias=None, cover=True):
         """
         增加可使用的类型转换器
 
@@ -42,15 +36,15 @@ class Patterns(UserDict):
                     else (UnionPattern([al_pat, target]))
                 )
 
-    def sets(self, patterns: Iterable[BasePattern], cover: bool = True):
+    def sets(self, patterns, cover=True):
         for pat in patterns:
             self.set(pat, cover=cover)
 
-    def merge(self, patterns: dict[str, BasePattern]):
+    def merge(self, patterns):
         for k in patterns:
             self.set(patterns[k], alias=k)
 
-    def remove(self, origin_type: type, alias: str | None = None):
+    def remove(self, origin_type, alias=None):
         if alias and (al_pat := self.data.get(alias)):
             if isinstance(al_pat, UnionPattern):
                 self.data[alias] = UnionPattern(filter(lambda x: x.alias != alias, al_pat.base))  # type: ignore
@@ -69,18 +63,14 @@ class Patterns(UserDict):
                 del self.data[origin_type]
 
 
-_ctx: dict[str, Patterns] = {"$global": Patterns("$global")}
+_ctx = {"$global": Patterns("$global")}
 _ctx_token: Token
 
 pattern_ctx: ContextVar[Patterns] = ContextVar("nepatterns")
 _ctx_token = pattern_ctx.set(_ctx["$global"])
 
 
-def create_local_patterns(
-    name: str,
-    data: dict[Any, BasePattern | type[Empty]] | None = None,
-    set_current: bool = True,
-) -> Patterns:
+def create_local_patterns(name, data=None, set_current=True) -> Patterns:
     """
     新建一个本地表达式组
 
@@ -101,7 +91,7 @@ def create_local_patterns(
     return new
 
 
-def switch_local_patterns(name: str):
+def switch_local_patterns(name):
     global _ctx_token
     if name.startswith("$"):
         raise ValueError(name)

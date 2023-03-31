@@ -143,7 +143,7 @@ class BasePattern(Generic[TOrigin]):
     regex_pattern: TPattern  # type: ignore
     pattern: str
     mode: MatchMode
-    converter: Callable[[BasePattern[TOrigin], str | Any], TOrigin]
+    converter: Callable[[BasePattern[TOrigin], str | Any], TOrigin | None]
     validators: list[Callable[[TOrigin], bool]]
 
     anti: bool
