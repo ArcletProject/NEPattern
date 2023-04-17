@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from typing import Iterable, Any, Literal, TypeVar, Dict, Union
 from tarina import Empty
+from tarina.lang import lang
 
-from .config import lang
 from .core import BasePattern, MatchMode
 from .exception import MatchFailed
 
@@ -17,10 +17,10 @@ class RegexPattern(BasePattern[Union[dict, tuple]]):
 
     def match(self, input_: str | Any):
         if not isinstance(input_, str):
-            raise MatchFailed(lang.type_error.format(target=input_))
+            raise MatchFailed(lang.nepattern.type_error.format(target=input_))
         if mat := self.regex_pattern.match(input_):
             return mat.groupdict() or mat.groups()
-        raise MatchFailed(lang.content_error.format(target=input_))
+        raise MatchFailed(lang.nepattern.content_error.format(target=input_))
 
 
 class UnionPattern(BasePattern):
@@ -59,7 +59,7 @@ class UnionPattern(BasePattern):
             for pat in self.for_validate:
                 if (res := pat.validate(text)).success:
                     return res.value
-            raise MatchFailed(lang.content_error.format(target=text))
+            raise MatchFailed(lang.nepattern.content_error.format(target=text))
         return text
 
     def __repr__(self):
@@ -117,7 +117,7 @@ class SequencePattern(BasePattern[TSeq]):
                 r"\{(.+?)\}", MatchMode.REGEX_MATCH, form, alias=f"set[{base}]"
             )
         else:
-            raise ValueError(lang.sequence_form_error.format(target=str(form)))
+            raise ValueError(lang.nepattern.sequence_form_error.format(target=str(form)))
 
     def match(self, text: str | Any):
         _res = super().match(text)
@@ -247,7 +247,7 @@ class SwitchPattern(BasePattern[_TCase]):
         except KeyError as e:
             if Ellipsis in self.switch:
                 return self.switch[...]
-            raise MatchFailed(lang.content_error.format(target=input_)) from e
+            raise MatchFailed(lang.nepattern.content_error.format(target=input_)) from e
 
 
 __all__ = ["RegexPattern", "UnionPattern", "SequencePattern", "MappingPattern", "SwitchPattern"]

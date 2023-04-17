@@ -1,8 +1,9 @@
 from collections import UserDict
 from typing import Any, Iterable, final
+from tarina import Empty
 
 from .core import BasePattern
-from .util import Empty
+
 
 @final
 class Patterns(UserDict[Any, BasePattern]):

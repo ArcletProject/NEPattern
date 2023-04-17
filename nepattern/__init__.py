@@ -1,4 +1,4 @@
-from tarina import Empty as _Empty  # noqa
+from tarina import Empty as Empty  # noqa
 from .base import (
     MappingPattern,
     RegexPattern,
@@ -6,7 +6,6 @@ from .base import (
     SwitchPattern,
     UnionPattern,
 )
-from .config import lang
 from .context import (
     Patterns,
     all_patterns,
@@ -33,3 +32,5 @@ from .main import (
     type_parser,
 )
 from .util import AllParam, TPattern, RawStr
+
+PatternModel = MatchMode

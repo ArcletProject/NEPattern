@@ -3,12 +3,19 @@ from __future__ import annotations
 import dataclasses
 import sre_compile
 from typing import TYPE_CHECKING, List, Pattern
+from pathlib import Path
+from tarina.lang import lang
+
+try:
+    from types import GenericAlias as CGenericAlias  # noqa
+except ImportError:
+    CGenericAlias = type(List[int])
 
 if TYPE_CHECKING:
-    from types import GenericAlias  # noqa
+    TPattern = Pattern[str]
 else:
-    GenericAlias: type = type(List[int])
-TPattern: type[Pattern] = type(sre_compile.compile("", 0))
+    TPattern: type[Pattern[str]] = type(sre_compile.compile("", 0))
+GenericAlias: type = type(List[int])
 
 
 class _All:
@@ -24,3 +31,6 @@ AllParam = _All()
 @dataclasses.dataclass
 class RawStr:
     value: str
+
+
+lang.load(Path(__file__).parent / "i18n")

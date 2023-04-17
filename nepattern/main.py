@@ -19,6 +19,7 @@ from pathlib import Path
 from types import FunctionType, LambdaType, MethodType
 from typing import Any, Union, Literal, TypeVar, runtime_checkable
 from tarina import Empty
+from tarina.lang import lang
 
 try:
     from typing import Annotated, get_args, get_origin  # type: ignore
@@ -26,11 +27,10 @@ except ImportError:
     from typing_extensions import Annotated, get_args, get_origin
 
 
-from .config import lang
 from .context import global_patterns, all_patterns
 from .core import BasePattern, MatchMode
 from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern
-from .util import AllParam, GenericAlias, RawStr
+from .util import AllParam, GenericAlias, RawStr, CGenericAlias
 
 _Contents = (Union, types.UnionType, Literal) if sys.version_info >= (3, 10) else (Union, Literal)  # pragma: no cover
 
@@ -197,7 +197,7 @@ def type_parser(item: Any, extra: str = "allow") -> BasePattern:
         if item and (pat := all_patterns().get(item, None)):
             return pat
     with suppress(TypeError):
-        if not inspect.isclass(item) and isinstance(item, GenericAlias):
+        if not inspect.isclass(item) and isinstance(item, (GenericAlias, CGenericAlias)):
             return _generic_parser(item, extra)
     if isinstance(item, TypeVar):
         return _typevar_parser(item)
@@ -239,7 +239,7 @@ def type_parser(item: Any, extra: str = "allow") -> BasePattern:
     if extra == "ignore":
         return AnyOne
     elif extra == "reject":
-        raise TypeError(lang.validate_reject.format(target=item))
+        raise TypeError(lang.require("nepattern", "validate_reject").format(target=item))
     return BasePattern.of(item) if inspect.isclass(item) else BasePattern.on(item)
 
 

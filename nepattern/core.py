@@ -12,6 +12,7 @@ from typing import (
 )
 from dataclasses import dataclass, field
 from tarina import Empty, generic_isinstance
+from tarina.lang import lang
 
 try:
     from typing import Annotated, Self, get_origin  # type: ignore
@@ -19,7 +20,6 @@ except ImportError:
     from typing_extensions import Annotated, Self, get_origin
 
 from .exception import MatchFailed
-from .config import lang
 from .util import TPattern
 
 
@@ -184,7 +184,7 @@ class BasePattern(Generic[TOrigin]):
         初始化参数匹配表达式
         """
         if pattern.startswith("^") or pattern.endswith("$"):
-            raise ValueError(lang.pattern_head_or_tail_error.format(target=pattern))
+            raise ValueError(lang.nepattern.pattern_head_or_tail_error.format(target=pattern))
         self.pattern = pattern
         self.regex_pattern = re.compile(f"^{pattern}$")
         self.mode = MatchMode(model)
@@ -310,24 +310,24 @@ class BasePattern(Generic[TOrigin]):
                 self.pattern_accepts,
                 self.type_accepts,
             ):  # pragma: no cover
-                raise MatchFailed(lang.type_error.format(target=input_.__class__))
+                raise MatchFailed(lang.nepattern.type_error.format(target=input_.__class__))
         if self.mode == MatchMode.KEEP:
             return input_  # type: ignore
         if self.mode == MatchMode.TYPE_CONVERT:
             res = self.converter(self, input_)
             if res is None and self.origin == Any:  # pragma: no cover
-                raise MatchFailed(lang.content_error.format(target=input_))
+                raise MatchFailed(lang.nepattern.content_error.format(target=input_))
             if not generic_isinstance(res, self.origin):
                 if not self.previous or not generic_isinstance(
                     res := self.converter(self, self.previous.match(input_)), self.origin
                 ):
-                    raise MatchFailed(lang.content_error.format(target=input_))
+                    raise MatchFailed(lang.nepattern.content_error.format(target=input_))
             return res
         if not isinstance(input_, str):
             if not self.previous or not isinstance(
                 input_ := self.previous.match(input_), str
             ):
-                raise MatchFailed(lang.type_error.format(target=type(input_)))
+                raise MatchFailed(lang.nepattern.type_error.format(target=type(input_)))
         if mat := self.regex_pattern.match(input_):
             glen = len(mat.groups())
             return (
@@ -335,7 +335,7 @@ class BasePattern(Generic[TOrigin]):
                 if self.mode == MatchMode.REGEX_CONVERT
                 else mat[1] if glen > 0 else mat[0]
             )
-        raise MatchFailed(lang.content_error.format(target=input_))
+        raise MatchFailed(lang.nepattern.content_error.format(target=input_))
 
     @overload
     def validate(self, input_: Any) -> ValidateResult[TOrigin]:
@@ -357,7 +357,7 @@ class BasePattern(Generic[TOrigin]):
             res = self.match(input_)
             for i in self.validators:
                 if not i(res):
-                    raise MatchFailed(lang.content_error.format(target=input_))
+                    raise MatchFailed(lang.nepattern.content_error.format(target=input_))
             return ValidateResult(_value=res, flag=ResultFlag.VALID)
         except Exception as e:
             if default is None:
@@ -392,7 +392,7 @@ class BasePattern(Generic[TOrigin]):
                     return ValidateResult(_value=input_, flag=ResultFlag.VALID)
             if default is None:
                 return ValidateResult(
-                    _error=MatchFailed(lang.content_error.format(target=input_)),
+                    _error=MatchFailed(lang.nepattern.content_error.format(target=input_)),
                     flag=ResultFlag.ERROR,
                 )
             return ValidateResult(
