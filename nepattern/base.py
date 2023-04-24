@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import re
-from typing import Iterable, Any, Literal, TypeVar, Dict, Union
+from typing import Any, Dict, Iterable, Literal, TypeVar, Union
+
 from tarina import Empty
 from tarina.lang import lang
 
@@ -13,14 +14,18 @@ class RegexPattern(BasePattern[Union[dict, tuple]]):
     """针对正则的特化匹配，支持正则组"""
 
     def __init__(self, pattern: str, alias: str | None = None):
-        super().__init__(pattern, origin=Union[dict, tuple], alias=alias or 'regex[:group]')  # type: ignore
+        super().__init__(pattern, origin=Union[dict, tuple], alias=alias or "regex[:group]")  # type: ignore
 
     def match(self, input_: str | Any):
         if not isinstance(input_, str):
-            raise MatchFailed(lang.nepattern.type_error.format(target=input_))
+            raise MatchFailed(
+                lang.require("nepattern", "type_error").format(target=input_)
+            )
         if mat := self.regex_pattern.match(input_):
             return mat.groupdict() or mat.groups()
-        raise MatchFailed(lang.nepattern.content_error.format(target=input_))
+        raise MatchFailed(
+            lang.require("nepattern", "content_error").format(target=input_)
+        )
 
 
 class UnionPattern(BasePattern):
@@ -48,9 +53,7 @@ class UnionPattern(BasePattern):
         alias_content = "|".join(
             [repr(a) for a in self.for_validate] + [repr(a) for a in self.for_equal]
         )
-        super().__init__(
-            r"(.+?)", MatchMode.KEEP, str, alias=alias_content, anti=anti
-        )
+        super().__init__(r"(.+?)", MatchMode.KEEP, str, alias=alias_content, anti=anti)
 
     def match(self, text: str | Any):
         if not text:
@@ -59,7 +62,9 @@ class UnionPattern(BasePattern):
             for pat in self.for_validate:
                 if (res := pat.validate(text)).success:
                     return res.value
-            raise MatchFailed(lang.nepattern.content_error.format(target=text))
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=text)
+            )
         return text
 
     def __repr__(self):
@@ -117,7 +122,11 @@ class SequencePattern(BasePattern[TSeq]):
                 r"\{(.+?)\}", MatchMode.REGEX_MATCH, form, alias=f"set[{base}]"
             )
         else:
-            raise ValueError(lang.nepattern.sequence_form_error.format(target=str(form)))
+            raise ValueError(
+                lang.require("nepattern", "sequence_form_error").format(
+                    target=str(form)
+                )
+            )
 
     def match(self, text: str | Any):
         _res = super().match(text)
@@ -125,7 +134,7 @@ class SequencePattern(BasePattern[TSeq]):
         success: list[tuple[int, Any]] = []
         fail: list[tuple[int, MatchFailed]] = []
         for _max, s in enumerate(
-                re.split(r"\s*,\s*", _res) if isinstance(_res, str) else _res
+            re.split(r"\s*,\s*", _res) if isinstance(_res, str) else _res
         ):
             try:
                 success.append((_max, self.base.match(s)))
@@ -133,9 +142,9 @@ class SequencePattern(BasePattern[TSeq]):
                 fail.append((_max, MatchFailed(f"{s} is not matched with {self.base}")))
 
         if (
-                (self._mode == "all" and fail)
-                or (self._mode == "pre" and fail and fail[0][0] == 0)
-                or (self._mode == "suf" and fail and fail[-1][0] == _max)
+            (self._mode == "all" and fail)
+            or (self._mode == "pre" and fail and fail[0][0] == 0)
+            or (self._mode == "suf" and fail and fail[-1][0] == _max)
         ):
             raise fail[0][1]
         if self._mode == "pre" and fail:
@@ -205,9 +214,9 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
                     )
                 )
         if (
-                (self._mode == "all" and fail)
-                or (self._mode == "pre" and fail and fail[0][0] == 0)
-                or (self._mode == "suf" and fail and fail[-1][0] == _max)
+            (self._mode == "all" and fail)
+            or (self._mode == "pre" and fail and fail[0][0] == 0)
+            or (self._mode == "suf" and fail and fail[-1][0] == _max)
         ):
             raise fail[0][1]
         if self._mode == "pre" and fail:
@@ -247,7 +256,15 @@ class SwitchPattern(BasePattern[_TCase]):
         except KeyError as e:
             if Ellipsis in self.switch:
                 return self.switch[...]
-            raise MatchFailed(lang.nepattern.content_error.format(target=input_)) from e
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_)
+            ) from e
 
 
-__all__ = ["RegexPattern", "UnionPattern", "SequencePattern", "MappingPattern", "SwitchPattern"]
+__all__ = [
+    "RegexPattern",
+    "UnionPattern",
+    "SequencePattern",
+    "MappingPattern",
+    "SwitchPattern",
+]
