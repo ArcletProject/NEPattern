@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, IntEnum
 from typing import Any, Callable, Generic, TypeVar, overload
 
@@ -23,7 +23,7 @@ def _accept(
     patterns: list[BasePattern] | None = None,
     types: list[type] | None = None,
 ):
-    res_p = any(map(lambda x: x(input_).success, patterns)) if patterns else False
+    res_p = any(map(lambda x: x.exec(input_).success, patterns)) if patterns else False
     res_t = generic_isinstance(input_, tuple(types)) if types else False
     return res_t or res_p
 
@@ -58,11 +58,20 @@ TVOrigin = TypeVar("TVOrigin")
 TDefault = TypeVar("TDefault")
 
 
-@dataclass
+@dataclass(init=False)
 class ValidateResult(Generic[TVOrigin]):
-    _value: TVOrigin | type[Empty] = field(default=Empty)
-    _error: Exception | type[Empty] = field(default=Empty)
-    flag: ResultFlag = field(default=ResultFlag.VALID)
+    """参数表达式验证结果"""
+    def __init__(
+        self,
+        value: TVOrigin | type[Empty] = Empty,
+        error: Exception | type[Empty] = Empty,
+        flag: ResultFlag = ResultFlag.VALID,
+    ):
+        self._value = value
+        self._error = error
+        self.flag = flag
+
+    __slots__ = ("_value", "_error", "flag")
 
     @property
     def value(self) -> TVOrigin:
@@ -107,6 +116,8 @@ class ValidateResult(Generic[TVOrigin]):
             return self.success  # type: ignore
         if callable(other) and self.success:
             return other(self.value)
+        if isinstance(other, BasePattern):
+            return other.exec(self.value)
         if self.success and hasattr(self.value, "__rshift__"):
             return self.value | other  # type: ignore
         return self
@@ -300,7 +311,7 @@ class BasePattern(Generic[TOrigin]):
         """
         if (
             self.mode > 0
-            and self.origin not in (str, Any)
+            and self.origin is not str and self.origin is not Any
             and generic_isinstance(input_, self.origin)
         ):
             return input_  # type: ignore
@@ -317,11 +328,11 @@ class BasePattern(Generic[TOrigin]):
                         target=input_.__class__
                     )
                 )
-        if self.mode == MatchMode.KEEP:
+        if self.mode == 0:
             return input_  # type: ignore
-        if self.mode == MatchMode.TYPE_CONVERT:
+        if self.mode == 2:
             res = self.converter(self, input_)
-            if res is None and self.origin == Any:  # pragma: no cover
+            if res is None and self.origin is Any:  # pragma: no cover
                 raise MatchFailed(
                     lang.require("nepattern", "content_error").format(target=input_)
                 )
@@ -334,7 +345,7 @@ class BasePattern(Generic[TOrigin]):
                         lang.require("nepattern", "content_error").format(target=input_)
                     )
             return res
-        if not isinstance(input_, str):
+        if input_.__class__ is not str:
             if not self.previous or not isinstance(
                 input_ := self.previous.match(input_), str
             ):
@@ -345,7 +356,7 @@ class BasePattern(Generic[TOrigin]):
             glen = len(mat.groups())
             return (
                 self.converter(self, mat[1] if glen > 0 else mat[0])
-                if self.mode == MatchMode.REGEX_CONVERT
+                if self.mode == 3
                 else mat[1]
                 if glen > 0
                 else mat[0]
@@ -374,17 +385,16 @@ class BasePattern(Generic[TOrigin]):
         """
         try:
             res = self.match(input_)
-            for i in self.validators:
-                if not i(res):
-                    raise MatchFailed(
-                        lang.require("nepattern", "content_error").format(target=input_)
-                    )
-            return ValidateResult(_value=res, flag=ResultFlag.VALID)
+            if self.validators and not all([i(res) for i in self.validators]):
+                raise MatchFailed(
+                    lang.require("nepattern", "content_error").format(target=input_)
+                )
+            return ValidateResult(value=res, flag=ResultFlag.VALID)
         except Exception as e:
             if default is None:
-                return ValidateResult(_error=e, flag=ResultFlag.ERROR)
+                return ValidateResult(error=e, flag=ResultFlag.ERROR)
             return ValidateResult(
-                _value=None if default is Empty else default, flag=ResultFlag.DEFAULT  # type: ignore
+                value=None if default is Empty else default, flag=ResultFlag.DEFAULT  # type: ignore
             )
 
     @overload
@@ -408,33 +418,33 @@ class BasePattern(Generic[TOrigin]):
         try:
             res = self.match(input_)
         except MatchFailed:
-            return ValidateResult(_value=input_, flag=ResultFlag.VALID)
+            return ValidateResult(value=input_, flag=ResultFlag.VALID)
         else:
             for i in self.validators:
                 if not i(res):
-                    return ValidateResult(_value=input_, flag=ResultFlag.VALID)
+                    return ValidateResult(value=input_, flag=ResultFlag.VALID)
             if default is None:
                 return ValidateResult(
-                    _error=MatchFailed(
+                    error=MatchFailed(
                         lang.require("nepattern", "content_error").format(target=input_)
                     ),
                     flag=ResultFlag.ERROR,
                 )
             return ValidateResult(
-                _value=None if default is Empty else default, flag=ResultFlag.DEFAULT
+                value=None if default is Empty else default, flag=ResultFlag.DEFAULT
             )
 
     @overload
-    def __call__(self, input_: Any) -> ValidateResult[TOrigin]:
+    def exec(self, input_: Any) -> ValidateResult[TOrigin]:
         ...
 
     @overload
-    def __call__(
+    def exec(
         self, input_: Any, default: TDefault
     ) -> ValidateResult[TOrigin | TDefault]:
         ...
 
-    def __call__(self, input_: Any, default: TDefault | None = None) -> ValidateResult[TOrigin | TDefault | None]:  # type: ignore
+    def exec(self, input_: Any, default: TDefault | None = None) -> ValidateResult[TOrigin | TDefault | None]:  # type: ignore
         """
         依据 anti 值 自动选择验证方式
         """
@@ -444,7 +454,7 @@ class BasePattern(Generic[TOrigin]):
             return self.validate(input_, default)
 
     def __rrshift__(self, other):
-        return self.__call__(other)
+        return self.exec(other)
 
     def __rmatmul__(self, other) -> Self:  # pragma: no cover
         if isinstance(other, str):

@@ -158,11 +158,11 @@ def test_pattern_anti():
     assert pat8.validate("123").failed
     assert pat8.invalidate("123").success
     pat8.reverse()
-    assert pat8(123).failed
-    assert pat8("123").success
+    assert pat8.exec(123).failed
+    assert pat8.exec("123").success
     pat8.reverse()
-    assert pat8(123).success
-    assert pat8("123").failed
+    assert pat8.exec(123).success
+    assert pat8.exec("123").failed
 
 
 def test_pattern_validator():
@@ -401,10 +401,10 @@ def test_suffix():
 def test_dunder():
     pat17 = BasePattern.of(float)
     assert ("test_float" @ pat17).alias == "test_float"
-    assert pat17(1.33).step(str) == pat17(1.33) >> str == "1.33"
-    assert (pat17(1.33) >> 1).value == 1.33
-    assert not pat17('1.33')
-    assert pat17(1.33) >> bool
+    assert pat17.exec(1.33).step(str) == pat17.exec(1.33) >> str == "1.33"
+    assert (pat17.exec(1.33) >> 1).value == 1.33
+    assert not '1.33' >> pat17
+    assert pat17.exec(1.33) >> bool
     assert BasePattern.of(int).validate(1).step(2) == 3
     pat17_1 = BasePattern(r"@(\d+)")
     pat17_2: BasePattern[int] = type_parser(int)
