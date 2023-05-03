@@ -18,16 +18,6 @@ from .exception import MatchFailed
 from .util import TPattern
 
 
-def _accept(
-    input_: Any,
-    patterns: list[BasePattern] | None = None,
-    types: list[type] | None = None,
-):
-    res_p = any(map(lambda x: x.exec(input_).success, patterns)) if patterns else False
-    res_t = generic_isinstance(input_, tuple(types)) if types else False
-    return res_t or res_p
-
-
 class MatchMode(IntEnum):
     """参数表达式匹配模式"""
 
@@ -154,8 +144,8 @@ class BasePattern(Generic[TOrigin]):
 
     anti: bool
     origin: type[TOrigin]
-    pattern_accepts: list[BasePattern]
-    type_accepts: list[type]
+    pattern_accepts: tuple[BasePattern, ...]
+    type_accepts: tuple[type, ...]
     alias: str | None
     previous: BasePattern | None
 
@@ -171,6 +161,9 @@ class BasePattern(Generic[TOrigin]):
         "alias",
         "previous",
         "validators",
+        "_hash",
+        "_repr",
+        "_accept"
     )
 
     def __init__(
@@ -201,10 +194,10 @@ class BasePattern(Generic[TOrigin]):
         self.alias = alias
         self.previous = previous
         accepts = accepts or []
-        self.pattern_accepts = list(
+        self.pattern_accepts = tuple(
             filter(lambda x: isinstance(x, BasePattern), accepts)  # type: ignore
         )
-        self.type_accepts = list(
+        self.type_accepts = tuple(
             filter(lambda x: not isinstance(x, BasePattern), accepts)  # type: ignore
         )
         self.converter = converter or (
@@ -214,8 +207,21 @@ class BasePattern(Generic[TOrigin]):
         )
         self.validators = validators or []
         self.anti = anti
+        self._repr = self.__calc_repr__()
+        self._hash = hash(self._repr)
+        if not self.pattern_accepts and not self.type_accepts:
+            self._accept = lambda _: True
+        elif not self.pattern_accepts:
+            self._accept = lambda x: generic_isinstance(x, self.type_accepts)
+        elif not self.type_accepts:
+            self._accept = lambda x: any(map(lambda y: y.exec(x).flag == 'valid', self.pattern_accepts))
+        else:
+            self._accept = lambda x: (
+                generic_isinstance(x, self.type_accepts) or
+                any(map(lambda y: y.exec(x).flag == 'valid', self.pattern_accepts))
+            )
 
-    def __repr__(self):
+    def __calc_repr__(self):
         if self.mode == MatchMode.KEEP:
             if self.alias:
                 return self.alias
@@ -251,14 +257,17 @@ class BasePattern(Generic[TOrigin]):
             f"{'!' if self.anti else ''}{text}"
         )
 
+    def __repr__(self):
+        return self._repr
+
     def __str__(self):
-        return self.__repr__()
+        return self._repr
 
     def __hash__(self):
-        return hash(self.__repr__())
+        return self._hash
 
     def __eq__(self, other):
-        return isinstance(other, BasePattern) and self.__repr__() == other.__repr__()
+        return isinstance(other, BasePattern) and self._repr == other._repr
 
     @staticmethod
     def of(unit: type[TOrigin]) -> BasePattern[TOrigin]:
@@ -289,6 +298,8 @@ class BasePattern(Generic[TOrigin]):
     def reverse(self) -> Self:
         """改变 pattern 的 anti 值"""
         self.anti = not self.anti
+        self._repr = self.__calc_repr__()
+        self._hash = hash(self._repr)
         return self
 
     def prefixed(self):
@@ -310,19 +321,13 @@ class BasePattern(Generic[TOrigin]):
         对传入的参数进行匹配, 如果匹配成功, 则返回转换后的值, 否则返回None
         """
         if (
-            self.mode > 0
+            self.mode > 1
             and self.origin is not str and self.origin is not Any
             and generic_isinstance(input_, self.origin)
         ):
             return input_  # type: ignore
-        if (self.type_accepts or self.pattern_accepts) and not _accept(
-            input_, self.pattern_accepts, self.type_accepts
-        ):
-            if not self.previous or not _accept(
-                input_ := self.previous.match(input_),
-                self.pattern_accepts,
-                self.type_accepts,
-            ):  # pragma: no cover
+        if not self._accept(input_):
+            if not self.previous or not self._accept(input_ := self.previous.match(input_)):  # pragma: no cover
                 raise MatchFailed(
                     lang.require("nepattern", "type_error").format(
                         target=input_.__class__
@@ -346,20 +351,18 @@ class BasePattern(Generic[TOrigin]):
                     )
             return res
         if input_.__class__ is not str:
-            if not self.previous or not isinstance(
-                input_ := self.previous.match(input_), str
-            ):
+            if not self.previous or not isinstance(input_ := self.previous.match(input_), str):
                 raise MatchFailed(
                     lang.require("nepattern", "type_error").format(target=type(input_))
                 )
         if mat := self.regex_pattern.match(input_):
-            glen = len(mat.groups())
+            emp = not mat.groups()
             return (
-                self.converter(self, mat[1] if glen > 0 else mat[0])
+                self.converter(self, mat[0] if emp else mat[1])
                 if self.mode == 3
-                else mat[1]
-                if glen > 0
                 else mat[0]
+                if emp
+                else mat[1]
             )
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_)

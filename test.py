@@ -213,7 +213,7 @@ def test_type_parser():
 
     pat11_3 = type_parser(my_func)
     assert pat11_3.origin == str
-    assert pat11_3.type_accepts == [int]
+    assert pat11_3.type_accepts == (int, )
 
     assert type_parser(complex, extra='ignore') == AnyOne
 

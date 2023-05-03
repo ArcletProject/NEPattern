@@ -270,6 +270,8 @@ class Bind:
             if (al := [i for i in params[1:] if isinstance(i, str)])
             else pattern.alias
         )
+        pattern._repr = pattern.__calc_repr__()
+        pattern._hash = hash(pattern._repr)
         pattern.validators.extend(filter(callable, params[1:]))
         return pattern
 

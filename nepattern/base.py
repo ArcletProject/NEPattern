@@ -111,15 +111,15 @@ class SequencePattern(BasePattern[TSeq]):
         self._mode = "all"
         if form is list:
             super().__init__(
-                r"\[(.+?)\]", MatchMode.REGEX_MATCH, form, alias=f"list[{base}]"
+                r"\[(.+?)\]", MatchMode.REGEX_CONVERT, form, lambda _, x: x, f"list[{base}]"
             )
         elif form is tuple:
             super().__init__(
-                r"\((.+?)\)", MatchMode.REGEX_MATCH, form, alias=f"tuple[{base}]"
+                r"\((.+?)\)", MatchMode.REGEX_CONVERT, form, lambda _, x: x, f"tuple[{base}]"
             )
         elif form is set:
             super().__init__(
-                r"\{(.+?)\}", MatchMode.REGEX_MATCH, form, alias=f"set[{base}]"
+                r"\{(.+?)\}", MatchMode.REGEX_CONVERT, form, lambda _, x: x, f"set[{base}]"
             )
         else:
             raise ValueError(
@@ -182,9 +182,10 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
         self._mode = "all"
         super().__init__(
             r"\{(.+?)\}",
-            MatchMode.REGEX_MATCH,
+            MatchMode.REGEX_CONVERT,
             dict,
-            alias=f"dict[{self.key}, {self.value}]",
+            lambda _, x: x,
+            f"dict[{self.key}, {self.value}]",
         )
 
     def match(self, text: str | Any):
