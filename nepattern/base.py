@@ -67,7 +67,7 @@ class UnionPattern(BasePattern):
             )
         return text
 
-    def __repr__(self):
+    def __calc_repr__(self):
         return ("!" if self.anti else "") + (
             "|".join(repr(a) for a in (*self.for_validate, *self.for_equal))
         )
@@ -153,7 +153,7 @@ class SequencePattern(BasePattern[TSeq]):
             return self.origin(i[1] for i in success if i[0] > fail[-1][0])
         return self.origin(i[1] for i in success)
 
-    def __repr__(self):
+    def __calc_repr__(self):
         return f"{self.origin.__name__}[{self.base}]"
 
     def prefixed(self) -> SequencePattern:
@@ -226,7 +226,7 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
             return {i[1]: i[2] for i in success if i[0] > fail[-1][0]}
         return {i[1]: i[2] for i in success}
 
-    def __repr__(self):
+    def __calc_repr__(self):
         return f"dict[{self.key.origin.__name__}, {self.value}]"
 
     def prefixed(self) -> MappingPattern:
@@ -248,7 +248,7 @@ class SwitchPattern(BasePattern[_TCase]):
         self.switch = data
         super().__init__("", MatchMode.TYPE_CONVERT, type(list(data.values())[0]))
 
-    def __repr__(self):
+    def __calc_repr__(self):
         return "|".join(f"{k}" for k in self.switch if k != Ellipsis)
 
     def match(self, input_: Any) -> _TCase:
