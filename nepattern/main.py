@@ -29,7 +29,7 @@ except ImportError:
 
 from .context import global_patterns, all_patterns
 from .core import BasePattern, MatchMode
-from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern
+from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern, DirectPattern
 from .util import AllParam, GenericAlias, RawStr, CGenericAlias
 
 _Contents = (Union, types.UnionType, Literal) if sys.version_info >= (3, 10) else (Union, Literal)  # pragma: no cover
@@ -219,13 +219,17 @@ def type_parser(item: Any, extra: str = "allow") -> BasePattern:
         )
     if isinstance(item, str):
         if item.startswith("re:"):
-            return RegexPattern(item[3:])
+            pat = item[3:]
+            return BasePattern(pat, alias=f"'{pat}'")
+        if item.startswith("rep:"):
+            pat = item[4:]
+            return RegexPattern(pat, alias=f"'{pat}'")
         if "|" in item:
             names = item.split("|")
             return UnionPattern(all_patterns().get(i, i) for i in names if i)
-        return BasePattern(item, alias=f"'{item}'")
+        return DirectPattern(item)
     if isinstance(item, RawStr):
-        return BasePattern(item.value, alias=f"'{item.value}'")
+        return DirectPattern(item.value, alias=f"'{item.value}'")
     if isinstance(
         item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)
     ):  # Args[foo, [123, int]]

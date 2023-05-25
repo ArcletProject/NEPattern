@@ -1,28 +1,75 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Iterable, Literal, TypeVar, Union
+from typing import Any, Dict, Iterable, Literal, TypeVar, Match
 
 from tarina import Empty
 from tarina.lang import lang
 
-from .core import BasePattern, MatchMode
+from .core import BasePattern, MatchMode, ValidateResult, ResultFlag
 from .exception import MatchFailed
 
 
-class RegexPattern(BasePattern[Union[dict, tuple]]):
+class DirectPattern(BasePattern):
+    """直接判断"""
+    def __init__(self, target: Any, alias: str | None = None):
+        self.target = target
+        super().__init__("", MatchMode.TYPE_CONVERT, type(target), alias=alias or str(target))
+
+    def prefixed(self):
+        if isinstance(self.target, str):
+            return BasePattern(self.target, alias=self.alias).prefixed()
+        return self
+
+    def suffixed(self):
+        if isinstance(self.target, str):
+            return BasePattern(self.target, alias=self.alias).suffixed()
+        return self
+
+    def match(self, input_: Any):
+        if input_ != self.target:
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_)
+            )
+        return input_
+
+    def validate(self, input_: Any, default: Any = None):
+        if input_ == self.target:
+            return ValidateResult(input_, ResultFlag.VALID)
+        e = MatchFailed(
+            lang.require("nepattern", "content_error").format(target=input_)
+        )
+        if default is None:
+            return ValidateResult(error=e, flag=ResultFlag.ERROR)
+        return ValidateResult(
+            value=None if default is Empty else default, flag=ResultFlag.DEFAULT  # type: ignore
+        )
+
+    def invalidate(self, input_: Any, default: Any = None) -> ValidateResult[Any]:
+        if input_ == self.target:
+            e = MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_)
+            )
+            if default is None:
+                return ValidateResult(error=e, flag=ResultFlag.ERROR)
+            return ValidateResult(
+                value=None if default is Empty else default, flag=ResultFlag.DEFAULT  # type: ignore
+            )
+        return ValidateResult(input_, flag=ResultFlag.VALID)
+
+class RegexPattern(BasePattern[Match[str]]):
     """针对正则的特化匹配，支持正则组"""
 
     def __init__(self, pattern: str, alias: str | None = None):
-        super().__init__(pattern, origin=Union[dict, tuple], alias=alias or "regex[:group]")  # type: ignore
+        super().__init__(pattern, origin=Match[str], alias=alias or "regex[:group]")  # type: ignore
 
-    def match(self, input_: str | Any):
+    def match(self, input_: str | Any) -> Match[str]:
         if not isinstance(input_, str):
             raise MatchFailed(
                 lang.require("nepattern", "type_error").format(target=input_)
             )
         if mat := self.regex_pattern.match(input_):
-            return mat.groupdict() or mat.groups()
+            return mat
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_)
         )
@@ -263,6 +310,7 @@ class SwitchPattern(BasePattern[_TCase]):
 
 
 __all__ = [
+    "DirectPattern",
     "RegexPattern",
     "UnionPattern",
     "SequencePattern",

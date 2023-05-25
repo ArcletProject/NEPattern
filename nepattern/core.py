@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from copy import deepcopy
-from dataclasses import dataclass
 from enum import Enum, IntEnum
 from typing import Any, Callable, Generic, TypeVar, overload
 
@@ -48,7 +47,6 @@ TVOrigin = TypeVar("TVOrigin")
 TDefault = TypeVar("TDefault")
 
 
-@dataclass(init=False)
 class ValidateResult(Generic[TVOrigin]):
     """参数表达式验证结果"""
     def __init__(
@@ -131,6 +129,13 @@ class ValidateResult(Generic[TVOrigin]):
 
     def __bool__(self):
         return self.success
+
+    def __repr__(self):
+        if self.flag == ResultFlag.VALID:
+            return f"ValidateResult(value={self._value!r})"
+        if self.flag == ResultFlag.ERROR:
+            return f"ValidateResult(error={self._error!r})"
+        return f"ValidateResult(default={self._value!r})"
 
 
 class BasePattern(Generic[TOrigin]):
@@ -279,13 +284,9 @@ class BasePattern(Generic[TOrigin]):
     @staticmethod
     def on(obj: TOrigin) -> BasePattern[TOrigin]:
         """提供 DataUnit 类型的构造方法"""
-        return BasePattern(
-            "",
-            MatchMode.KEEP,
-            type(obj),
-            alias=str(obj),
-            validators=[lambda x: x == obj],
-        )
+        from .base import DirectPattern
+
+        return DirectPattern(obj)
 
     @staticmethod
     def to(content: Any) -> BasePattern | None:
@@ -477,4 +478,4 @@ def set_unit(
     return Annotated[target, predicate]  # type: ignore
 
 
-__all__ = ["MatchMode", "BasePattern", "set_unit", "ValidateResult", "TOrigin"]
+__all__ = ["MatchMode", "BasePattern", "set_unit", "ValidateResult", "TOrigin", "ResultFlag"]

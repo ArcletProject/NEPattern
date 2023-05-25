@@ -118,6 +118,10 @@ def test_pattern_accepts():
     assert pat6_2.validate(123.123).value == 123.123
     assert pat6_2.validate(b'123').value == b'123'
     print(pat6_2)
+    pat6_3 = BasePattern(model=MatchMode.KEEP, accepts=[NUMBER])
+    assert pat6_3.validate(123).value == 123
+    assert pat6_3.validate(123.123).value == 123.123
+    assert pat6_3.validate(b'123').failed
 
 
 def test_pattern_previous():
@@ -412,14 +416,17 @@ def test_dunder():
 
 
 def test_regex_pattern():
+    from re import Match
     pat18 = RegexPattern(r"((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)", "ghrepo")
-    assert pat18.validate(
-        "https://github.com/ArcletProject/NEPattern"
-    ).value == {'owner': 'ArcletProject', 'repo': 'NEPattern'}
+    res = pat18.validate("https://github.com/ArcletProject/NEPattern").value
+    assert isinstance(res, Match)
+    assert res.groupdict() == {'owner': 'ArcletProject', 'repo': 'NEPattern'}
     assert pat18.validate(123).failed
     assert pat18.validate("www.bilibili.com").failed
-    pat18_1 = type_parser(r"re:(\d+)")
-    assert pat18_1.validate("1234").value == ('1234',)
+    pat18_1 = type_parser(r"re:(\d+)")  # str starts with "re:" will convert to BasePattern instead of RegexPattern
+    assert pat18_1.validate("1234").value == '1234'
+    pat18_2 = type_parser(r"rep:(\d+)")  # str starts with "rep:" will convert to RegexPattern
+    assert pat18_2.validate("1234").value.groups() == ('1234',)
 
 
 def test_switch_pattern():
@@ -461,6 +468,31 @@ def test_patterns():
 def test_rawstr():
     assert type_parser("url") == URL
     assert type_parser(RawStr("url")) == BasePattern("url", alias="'url'")
+
+
+def test_direct():
+    pat20 = DirectPattern("abc")
+    assert pat20.validate("abc").value == "abc"
+    assert pat20.validate("abcd").failed
+    assert pat20.validate(123).failed
+    assert pat20.validate("123", 123).value == 123
+    assert pat20.prefixed().validate("abcd").value == "abc"
+    assert pat20.suffixed().validate("dabc").value == "abc"
+    pat20_1 = DirectPattern(123)
+    assert pat20_1.validate(123).value == 123
+    assert pat20_1.validate("123").failed
+    assert pat20_1.validate(123, "123").value == 123
+    assert pat20_1.prefixed().validate("1234").failed
+    assert pat20_1.suffixed().validate("4123").failed
+    assert pat20_1.match(123) == 123
+    try:
+        pat20_1.match("123")
+    except MatchFailed as e:
+        print(e)
+    pat20_2 = DirectPattern(456)
+    assert pat20_2.invalidate(123).value == 123
+    assert pat20_2.invalidate(456).failed
+    assert pat20_2.invalidate(456, 123).value == 123
 
 
 if __name__ == "__main__":

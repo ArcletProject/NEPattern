@@ -1,5 +1,6 @@
 from tarina import Empty as Empty  # noqa
 from .base import (
+    DirectPattern,
     MappingPattern,
     RegexPattern,
     SequencePattern,
