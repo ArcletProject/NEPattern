@@ -8,6 +8,7 @@ from tarina.lang import lang
 
 from .core import BasePattern, MatchMode, ValidateResult, ResultFlag
 from .exception import MatchFailed
+from .util import TPattern
 
 
 class DirectPattern(BasePattern):
@@ -60,8 +61,9 @@ class DirectPattern(BasePattern):
 class RegexPattern(BasePattern[Match[str]]):
     """针对正则的特化匹配，支持正则组"""
 
-    def __init__(self, pattern: str, alias: str | None = None):
-        super().__init__(pattern, origin=Match[str], alias=alias or "regex[:group]")  # type: ignore
+    def __init__(self, pattern: str | TPattern, alias: str | None = None):
+        super().__init__("", origin=Match[str], alias=alias or "regex[:group]")  # type: ignore
+        self.regex_pattern = re.compile(pattern)
 
     def match(self, input_: str | Any) -> Match[str]:
         if not isinstance(input_, str):

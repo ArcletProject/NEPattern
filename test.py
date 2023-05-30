@@ -416,7 +416,7 @@ def test_dunder():
 
 
 def test_regex_pattern():
-    from re import Match
+    from re import Match, compile
     pat18 = RegexPattern(r"((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)", "ghrepo")
     res = pat18.validate("https://github.com/ArcletProject/NEPattern").value
     assert isinstance(res, Match)
@@ -427,7 +427,8 @@ def test_regex_pattern():
     assert pat18_1.validate("1234").value == '1234'
     pat18_2 = type_parser(r"rep:(\d+)")  # str starts with "rep:" will convert to RegexPattern
     assert pat18_2.validate("1234").value.groups() == ('1234',)
-
+    pat18_3 = type_parser(compile(r"(\d+)"))  # re.Pattern will convert to RegexPattern
+    assert pat18_3.validate("1234").value.groups() == ('1234',)
 
 def test_switch_pattern():
     pat19 = SwitchPattern({"foo": 1, "bar": 2})

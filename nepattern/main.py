@@ -30,7 +30,7 @@ except ImportError:
 from .context import global_patterns, all_patterns
 from .core import BasePattern, MatchMode
 from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern, DirectPattern
-from .util import AllParam, GenericAlias, RawStr, CGenericAlias
+from .util import AllParam, GenericAlias, RawStr, CGenericAlias, TPattern
 
 _Contents = (Union, types.UnionType, Literal) if sys.version_info >= (3, 10) else (Union, Literal)  # pragma: no cover
 
@@ -217,6 +217,8 @@ def type_parser(item: Any, extra: str = "allow") -> BasePattern:
             converter=item if len(sig.parameters) == 2 else lambda _, x: item(x),
             model=MatchMode.TYPE_CONVERT,
         )
+    if isinstance(item, TPattern):
+        return RegexPattern(item.pattern, alias=f"'{item.pattern}'")
     if isinstance(item, str):
         if item.startswith("re:"):
             pat = item[3:]
