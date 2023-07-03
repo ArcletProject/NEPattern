@@ -15,7 +15,7 @@ class Patterns(UserDict):
         self.name = name
         super().__init__({"": Empty, "*": AllParam})
 
-    def set(self, target, alias=None, cover=True):
+    def set(self, target, alias=None, cover=True, no_alias=False):
         """
         增加可使用的类型转换器
 
@@ -23,8 +23,9 @@ class Patterns(UserDict):
             target: 设置的表达式
             alias: 目标类型的别名
             cover: 是否覆盖已有的转换器
+            no_alias: 是否不使用目标类型自带的别名
         """
-        for k in {alias, target.alias, target.origin}:
+        for k in {alias, None if no_alias else target.alias, target.origin}:
             if not k:
                 continue
             if k not in self.data or cover:
@@ -37,13 +38,13 @@ class Patterns(UserDict):
                     else (UnionPattern([al_pat, target]))
                 )
 
-    def sets(self, patterns, cover=True):
+    def sets(self, patterns, cover=True, no_alias=False):
         for pat in patterns:
-            self.set(pat, cover=cover)
+            self.set(pat, cover=cover, no_alias=no_alias)
 
-    def merge(self, patterns):
+    def merge(self, patterns, no_alias=False):
         for k in patterns:
-            self.set(patterns[k], alias=k)
+            self.set(patterns[k], alias=k, no_alias=no_alias)
 
     def remove(self, origin_type, alias=None):
         if alias and (al_pat := self.data.get(alias)):
@@ -121,10 +122,10 @@ def global_patterns():
 def all_patterns():
     """获取 global 与 local 的合并表达式组"""
     new = Patterns("$temp")
+    new.update(global_patterns().data)
     local = local_patterns()
     if not local.name.startswith("$"):
         new.update(local_patterns().data)
-    new.update(global_patterns().data)
     return new
 
 

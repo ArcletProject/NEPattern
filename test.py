@@ -302,13 +302,13 @@ def test_converters():
     assert pattern_map["color"].validate("#ffffff").value == "ffffff"
     assert pattern_map["datetime"].validate("2011-11-04").value.day == 4
     assert pattern_map["file"].validate("test.py").value[:4] == b"from"
-    assert pattern_map["int"].validate("123").value == 123
-    assert pattern_map["float"].validate("12.34").value == 12.34
-    assert pattern_map["bool"].validate("false").value is False
-    assert pattern_map["list"].validate("[1,2,3]").value == [1, 2, 3]
-    assert pattern_map["tuple"].validate("(1,2,3)").value == (1, 2, 3)
-    assert pattern_map["set"].validate("{1,2,3}").value == {1, 2, 3}
-    assert pattern_map["dict"].validate('{"a":1,"b":2,"c":3}').value == {
+    assert pattern_map[int].validate("123").value == 123
+    assert pattern_map[float].validate("12.34").value == 12.34
+    assert pattern_map[bool].validate("false").value is False
+    assert pattern_map[list].validate("[1,2,3]").value == [1, 2, 3]
+    assert pattern_map[tuple].validate("(1,2,3)").value == (1, 2, 3)
+    assert pattern_map[set].validate("{1,2,3}").value == {1, 2, 3}
+    assert pattern_map[dict].validate('{"a":1,"b":2,"c":3}').value == {
         "a": 1,
         "b": 2,
         "c": 3,

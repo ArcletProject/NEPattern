@@ -14,6 +14,7 @@ class Patterns(UserDict[Any, BasePattern]):
         target: BasePattern,
         alias: str | None = None,
         cover: bool = True,
+        no_alias=False
     ):
         """
         增加可使用的类型转换器
@@ -22,10 +23,11 @@ class Patterns(UserDict[Any, BasePattern]):
             target: 设置的表达式
             alias: 目标类型的别名
             cover: 是否覆盖已有的转换器
+            no_alias: 是否不使用目标类型自带的别名
         """
         ...
-    def sets(self, patterns: Iterable[BasePattern], cover: bool = True): ...
-    def merge(self, patterns: dict[str, BasePattern]): ...
+    def sets(self, patterns: Iterable[BasePattern], cover: bool = True, no_alias=False): ...
+    def merge(self, patterns: dict[str, BasePattern], no_alias=False): ...
     def remove(self, origin_type: type, alias: str | None = None): ...
 
 def create_local_patterns(

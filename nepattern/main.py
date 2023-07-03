@@ -110,7 +110,7 @@ PathFile = BasePattern(
     previous=StrPath,
     converter=lambda _, x: x.read_bytes() if x.exists() and x.is_file() else None,  # type: ignore
 )
-
+global_patterns().set(PathFile)
 INTEGER = BasePattern(
     r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x), "int"
 )
@@ -143,7 +143,7 @@ _Tuple = BasePattern(r"(\(.+?\))", MatchMode.REGEX_CONVERT, tuple, alias="tuple"
 _Set = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, set, alias="set")
 _Dict = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, dict, alias="dict")
 
-global_patterns().sets([PathFile, _String, INTEGER, FLOAT, _Bool, _List, _Tuple, _Set, _Dict])
+global_patterns().sets([_String, INTEGER, FLOAT, _Bool, _List, _Tuple, _Set, _Dict], no_alias=True)
 global_patterns()["number"] = NUMBER
 
 
