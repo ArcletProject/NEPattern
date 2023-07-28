@@ -297,7 +297,9 @@ def test_converters():
     assert pattern_map["any_str"].validate(123456).value == "123456"
     assert pattern_map["email"].validate("example@outlook.com").success
     assert pattern_map["ip"].validate("192.168.0.1").success
+    assert pattern_map["url"].validate("www.example.com").success
     assert pattern_map["url"].validate("https://www.example.com").success
+    assert pattern_map["url"].validate("wwwexamplecom").failed
     assert pattern_map["hex"].validate("0xff").value == 255
     assert pattern_map["color"].validate("#ffffff").value == "ffffff"
     assert pattern_map["datetime"].validate("2011-11-04").value.day == 4
