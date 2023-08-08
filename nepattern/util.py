@@ -1,21 +1,25 @@
 from __future__ import annotations
 
+import sys
 import dataclasses
 import sre_compile
-from typing import TYPE_CHECKING, List, Pattern
+from typing import TYPE_CHECKING, List, Pattern, Union
 from pathlib import Path
 from tarina.lang import lang
 
-try:
+if sys.version_info >= (3, 10):   # pragma: no cover
     from types import GenericAlias as CGenericAlias  # noqa
-except ImportError:
+    from types import UnionType as CUnionType  # noqa
+else:
     CGenericAlias = type(List[int])
+    CUnionType = type(Union[int, str])
 
 if TYPE_CHECKING:
     TPattern = Pattern[str]
 else:
     TPattern: type[Pattern[str]] = type(sre_compile.compile("", 0))
 GenericAlias: type = type(List[int])
+UnionType: type = type(Union[int, str])
 
 
 class _All:

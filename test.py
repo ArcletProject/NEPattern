@@ -2,7 +2,9 @@ from nepattern import *
 
 def test_type():
     import re
+
     assert isinstance(re.compile(""), TPattern)
+
 
 def test_result():
     res = NUMBER.validate(123)

@@ -30,9 +30,9 @@ except ImportError:
 from .context import global_patterns, all_patterns
 from .core import BasePattern, MatchMode
 from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern, DirectPattern
-from .util import AllParam, GenericAlias, RawStr, CGenericAlias, TPattern
+from .util import AllParam, GenericAlias, RawStr, TPattern, CGenericAlias, CUnionType
 
-_Contents = (Union, types.UnionType, Literal) if sys.version_info >= (3, 10) else (Union, Literal)  # pragma: no cover
+_Contents = (Union, CUnionType, Literal)
 
 
 AnyOne = BasePattern(r".+", MatchMode.KEEP, Any, alias="any")
@@ -198,7 +198,7 @@ def type_parser(item: Any, extra: str = "allow") -> BasePattern:
         if item and (pat := all_patterns().get(item, None)):
             return pat
     with suppress(TypeError):
-        if not inspect.isclass(item) and isinstance(item, (GenericAlias, CGenericAlias)):
+        if not inspect.isclass(item) and isinstance(item, (GenericAlias, CGenericAlias, CUnionType)):
             return _generic_parser(item, extra)
     if isinstance(item, TypeVar):
         return _typevar_parser(item)
