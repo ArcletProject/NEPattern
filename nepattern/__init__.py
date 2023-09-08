@@ -26,6 +26,7 @@ from .main import INTEGER as INTEGER
 from .main import IP as IP
 from .main import NUMBER as NUMBER
 from .main import URL as URL
+from .main import STRING as STRING
 from .main import AnyOne as AnyOne
 from .main import AnyString as AnyString
 from .main import Bind as Bind

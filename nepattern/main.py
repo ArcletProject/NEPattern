@@ -1,23 +1,21 @@
 from __future__ import annotations
 
 import inspect
-import sys
-import types
-from datetime import datetime
-from copy import deepcopy
-from collections.abc import (
-    Sequence as ABCSeq,
-    Set as ABCSet,
-    MutableSet as ABCMuSet,
-    MutableSequence as ABCMuSeq,
-    MutableMapping as ABCMuMap,
-    Mapping as ABCMap,
-)
+import re
+from collections.abc import Mapping as ABCMap
+from collections.abc import MutableMapping as ABCMuMap
+from collections.abc import MutableSequence as ABCMuSeq
+from collections.abc import MutableSet as ABCMuSet
+from collections.abc import Sequence as ABCSeq
+from collections.abc import Set as ABCSet
 from contextlib import suppress
+from copy import deepcopy
+from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from types import FunctionType, LambdaType, MethodType
-from typing import Any, Union, Literal, TypeVar, runtime_checkable
+from typing import Any, Literal, TypeVar, Union, runtime_checkable
+
 from tarina import Empty
 from tarina.lang import lang
 
@@ -26,34 +24,80 @@ try:
 except ImportError:
     from typing_extensions import Annotated, get_args, get_origin
 
-
-from .context import global_patterns, all_patterns
+from .base import (
+    DirectPattern,
+    MappingPattern,
+    RegexPattern,
+    SequencePattern,
+    SwitchPattern,
+    UnionPattern
+)
+from .context import all_patterns, global_patterns
 from .core import BasePattern, MatchMode
-from .base import UnionPattern, MappingPattern, SequencePattern, RegexPattern, SwitchPattern, DirectPattern
-from .util import AllParam, GenericAlias, RawStr, TPattern, CGenericAlias, CUnionType
+from .util import (
+    AllParam,
+    CGenericAlias,
+    CUnionType,
+    GenericAlias,
+    RawStr,
+    TPattern
+)
 
 _Contents = (Union, CUnionType, Literal)
 
 
-AnyOne = BasePattern(r".+", MatchMode.KEEP, Any, alias="any")
+AnyOne = BasePattern(model=MatchMode.KEEP, origin=Any, alias="any")
 """匹配任意内容的表达式"""
 
-AnyString = BasePattern(r".+", MatchMode.TYPE_CONVERT, str, alias="any_str")
+AnyString = BasePattern(model=MatchMode.TYPE_CONVERT, origin=str, alias="any_str")
 """匹配任意内容并转为字符串的表达式"""
 
-_String = BasePattern(r".+", MatchMode.KEEP, str, alias="str", accepts=[str])
+STRING = BasePattern(model=MatchMode.KEEP, origin=str, alias="str", accepts=[str])
 
-EMAIL = BasePattern(r"(?:[\w\.+-]+)@(?:[\w\.-]+)\.(?:[\w\.-]+)", alias="email")
+INTEGER = BasePattern(
+    r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int"
+)
+"""整形数表达式，只能接受整数样式的量"""
+
+FLOAT = BasePattern(
+    r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float"
+)
+"""浮点数表达式"""
+
+NUMBER = BasePattern(
+    r"(\-?\d+(?P<float>\.\d*)?)",
+    MatchMode.REGEX_CONVERT, 
+    Union[int, float], 
+    lambda _, x: float(x[1]) if x["float"] else int(x[1]),
+    "number",
+)
+"""一般数表达式，既可以浮点数也可以整数"""
+
+_Bool = BasePattern(
+    r"(?i:True|False)",
+    MatchMode.REGEX_CONVERT,
+    bool,
+    lambda _, x: x[0].lower() == "true",
+    "bool",
+)
+_List = BasePattern(r"(\[.+?\])", MatchMode.REGEX_CONVERT, list, alias="list")
+_Tuple = BasePattern(r"(\(.+?\))", MatchMode.REGEX_CONVERT, tuple, alias="tuple")
+_Set = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, set, alias="set")
+_Dict = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, dict, alias="dict")
+
+EMAIL = BasePattern(r"(?:[\w\.+-]+)@(?:[\w\.-]+)\.(?:[\w\.-]+)", MatchMode.REGEX_MATCH, alias="email")
 """匹配邮箱地址的表达式"""
 
 IP = BasePattern(
     r"(?:(?:[01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}(?:[01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5]):?(?:\d+)?",
+    MatchMode.REGEX_MATCH,
     alias="ip",
 )
 """匹配Ip地址的表达式"""
 
 URL = BasePattern(
     r"(?:\w+://)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(?:\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+(?::[0-9]{1,5})?[-a-zA-Z0-9()@:%_\\\+\.~#?&//=]*",
+    MatchMode.REGEX_MATCH,
     alias="url",
 )
 """匹配网页链接的表达式"""
@@ -62,24 +106,66 @@ HEX = BasePattern(
     r"((?:0x)?[0-9a-fA-F]+)",
     MatchMode.REGEX_CONVERT,
     int,
-    lambda _, x: int(x, 16),
+    lambda _, x: int(x[1], 16),
     "hex",
 )
 """匹配16进制数的表达式"""
 
 HEX_COLOR = BasePattern(
-    r"(#[0-9a-fA-F]{6})", MatchMode.REGEX_CONVERT, str, lambda _, x: x[1:], "color"
+    r"(#[0-9a-fA-F]{6})", MatchMode.REGEX_CONVERT, str, lambda _, x: x[1][1:], "color"
 )
 """匹配16进制颜色代码的表达式"""
+
+MILLI_SECOND = 1
+SECOND = MILLI_SECOND * 1000
+MINUTE = SECOND * 60
+HOUR = MINUTE * 60
+DAY = HOUR * 24
+WEEK = DAY * 7
+
+NUMERIC = r"\d+(?:\.\d+)?"
+TIME_REGEXP = re.compile(
+    "^"
+    + "".join(
+        map(
+            lambda unit: f"({NUMERIC}{unit})?",
+            [
+                "w(?:eek(?:s)?)?",
+                "d(?:ay(?:s)?)?",
+                "h(?:our(?:s)?)?",
+                "m(?:in(?:ute)?(?:s)?)?",
+                "s(?:ec(?:ond)?(?:s)?)?",
+            ],
+        )
+    )
+)
+
+def _parse_time(x: str) -> datetime:  # pragma: no cover
+
+    if capture := TIME_REGEXP.match(x):
+        if stamp := (
+            float(capture[1] or 0) * WEEK
+            + float(capture[2] or 0) * DAY
+            + float(capture[3] or 0) * HOUR
+            + float(capture[4] or 0) * MINUTE
+            + float(capture[5] or 0) * SECOND
+        ):
+            return datetime.now() + timedelta(milliseconds=stamp)
+    if re.match(r"^\d{1,2}(:\d{1,2}){1,2}$", x):
+        return datetime.fromisoformat(f"{datetime.now().strftime('%Y-%m-%d')}-{x}")
+    if re.match(r"^\d{1,2}-\d{1,2}-\d{1,2}(:\d{1,2}){1,2}$", x):
+        return datetime.fromisoformat(f"{datetime.now().year}-{x}")
+    return datetime.fromisoformat(x)
+
 
 DATETIME = BasePattern(
     model=MatchMode.TYPE_CONVERT,
     origin=datetime,
     alias="datetime",
-    accepts=[str, int],
+    accepts=[str, int, FLOAT],
     converter=lambda _, x: datetime.fromtimestamp(x)
-    if isinstance(x, int)
-    else datetime.fromisoformat(x),
+    if isinstance(x, (int, float))
+    else _parse_time(x),
 )
 """匹配时间的表达式"""
 
@@ -112,43 +198,13 @@ PathFile = BasePattern(
     converter=lambda _, x: x.read_bytes() if x.exists() and x.is_file() else None,  # type: ignore
 )
 global_patterns().set(PathFile)
-INTEGER = BasePattern(
-    r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x), "int"
-)
-"""整形数表达式，只能接受整数样式的量"""
 
-FLOAT = BasePattern(
-    r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x), "float"
-)
-"""浮点数表达式"""
 
-NUMBER = BasePattern(
-    r"(\-?\d+\.?\d*)",
-    MatchMode.TYPE_CONVERT,
-    int,
-    lambda _, x: int(float(x)),
-    "number",
-    accepts=[FLOAT, int],
-)
-"""一般数表达式，既可以浮点数也可以整数"""
-
-_Bool = BasePattern(
-    r"(?i:True|False)",
-    MatchMode.REGEX_CONVERT,
-    bool,
-    lambda _, x: x.lower() == "true",
-    "bool",
-)
-_List = BasePattern(r"(\[.+?\])", MatchMode.REGEX_CONVERT, list, alias="list")
-_Tuple = BasePattern(r"(\(.+?\))", MatchMode.REGEX_CONVERT, tuple, alias="tuple")
-_Set = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, set, alias="set")
-_Dict = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, dict, alias="dict")
-
-global_patterns().sets([_String, INTEGER, FLOAT, _Bool, _List, _Tuple, _Set, _Dict], no_alias=True)
+global_patterns().sets([STRING, INTEGER, FLOAT, _Bool, _List, _Tuple, _Set, _Dict], no_alias=True)
 global_patterns()["number"] = NUMBER
 
 
-def _generic_parser(item: GenericAlias, extra: str) -> BasePattern:
+def _generic_parser(item: GenericAlias, extra: str) -> BasePattern:  # type: ignore
     origin = get_origin(item)
     if origin is Annotated:
         org, *meta = get_args(item)
@@ -218,12 +274,12 @@ def type_parser(item: Any, extra: str = "allow") -> BasePattern:
             converter=item if len(sig.parameters) == 2 else lambda _, x: item(x),
             model=MatchMode.TYPE_CONVERT,
         )
-    if isinstance(item, TPattern):
+    if isinstance(item, TPattern):  # type: ignore
         return RegexPattern(item.pattern, alias=f"'{item.pattern}'")
     if isinstance(item, str):
         if item.startswith("re:"):
             pat = item[3:]
-            return BasePattern(pat, alias=f"'{pat}'")
+            return BasePattern(pat, MatchMode.REGEX_MATCH, alias=f"'{pat}'")
         if item.startswith("rep:"):
             pat = item[4:]
             return RegexPattern(pat, alias=f"'{pat}'")
@@ -290,6 +346,7 @@ __all__ = [
     "AnyOne",
     "StrPath",
     "PathFile",
+    "STRING",
     "NUMBER",
     "HEX",
     "HEX_COLOR",

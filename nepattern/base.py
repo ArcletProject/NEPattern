@@ -15,16 +15,16 @@ class DirectPattern(BasePattern):
     """直接判断"""
     def __init__(self, target: Any, alias: str | None = None):
         self.target = target
-        super().__init__("", MatchMode.TYPE_CONVERT, type(target), alias=alias or str(target))
+        super().__init__(model=MatchMode.TYPE_CONVERT, origin=type(target), alias=alias or str(target))
 
     def prefixed(self):
         if isinstance(self.target, str):
-            return BasePattern(self.target, alias=self.alias).prefixed()
+            return BasePattern(self.target, MatchMode.REGEX_MATCH, alias=self.alias).prefixed()
         return self
 
     def suffixed(self):
         if isinstance(self.target, str):
-            return BasePattern(self.target, alias=self.alias).suffixed()
+            return BasePattern(self.target, MatchMode.REGEX_MATCH, alias=self.alias).suffixed()
         return self
 
     def match(self, input_: Any):
@@ -36,7 +36,7 @@ class DirectPattern(BasePattern):
 
     def validate(self, input_: Any, default: Any = None):
         if input_ == self.target:
-            return ValidateResult(input_, ResultFlag.VALID)
+            return ValidateResult(input_, flag=ResultFlag.VALID)
         e = MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_)
         )
@@ -64,8 +64,9 @@ class RegexPattern(BasePattern[Match[str]]):
     def __init__(self, pattern: str | TPattern, alias: str | None = None):
         super().__init__("", origin=Match[str], alias=alias or "regex[:group]")  # type: ignore
         self.regex_pattern = re.compile(pattern)
+        self.pattern = self.regex_pattern.pattern
 
-    def match(self, input_: str | Any) -> Match[str]:
+    def match(self, input_: Any) -> Match[str]:
         if not isinstance(input_, str):
             raise MatchFailed(
                 lang.require("nepattern", "type_error").format(target=input_)
@@ -102,9 +103,9 @@ class UnionPattern(BasePattern):
         alias_content = "|".join(
             [repr(a) for a in self.for_validate] + [repr(a) for a in self.for_equal]
         )
-        super().__init__(r"(.+?)", MatchMode.KEEP, str, alias=alias_content, anti=anti)
+        super().__init__(model=MatchMode.KEEP, origin=str, alias=alias_content, anti=anti)
 
-    def match(self, text: str | Any):
+    def match(self, text: Any):
         if not text:
             text = None
         if text not in self.for_equal:
@@ -160,15 +161,15 @@ class SequencePattern(BasePattern[TSeq]):
         self._mode = "all"
         if form is list:
             super().__init__(
-                r"\[(.+?)\]", MatchMode.REGEX_CONVERT, form, lambda _, x: x, f"list[{base}]"
+                r"\[(.+?)\]", MatchMode.REGEX_CONVERT, form, alias=f"list[{base}]"
             )
         elif form is tuple:
             super().__init__(
-                r"\((.+?)\)", MatchMode.REGEX_CONVERT, form, lambda _, x: x, f"tuple[{base}]"
+                r"\((.+?)\)", MatchMode.REGEX_CONVERT, form, alias=f"tuple[{base}]"
             )
         elif form is set:
             super().__init__(
-                r"\{(.+?)\}", MatchMode.REGEX_CONVERT, form, lambda _, x: x, f"set[{base}]"
+                r"\{(.+?)\}", MatchMode.REGEX_CONVERT, form, alias=f"set[{base}]"
             )
         else:
             raise ValueError(
@@ -177,7 +178,7 @@ class SequencePattern(BasePattern[TSeq]):
                 )
             )
 
-    def match(self, text: str | Any):
+    def match(self, text: Any):
         _res = super().match(text)
         _max = 0
         success: list[tuple[int, Any]] = []
@@ -233,11 +234,11 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
             r"\{(.+?)\}",
             MatchMode.REGEX_CONVERT,
             dict,
-            lambda _, x: x,
-            f"dict[{self.key}, {self.value}]",
+            alias=f"dict[{self.key}, {self.value}]",
         )
+        self.converter = lambda _, x: x[1]
 
-    def match(self, text: str | Any):
+    def match(self, text: Any):
         _res = super().match(text)
         success: list[tuple[int, Any, Any]] = []
         fail: list[tuple[int, MatchFailed]] = []
@@ -295,7 +296,7 @@ class SwitchPattern(BasePattern[_TCase]):
 
     def __init__(self, data: dict[Any | ellipsis, _TCase]):
         self.switch = data
-        super().__init__("", MatchMode.TYPE_CONVERT, type(list(data.values())[0]))
+        super().__init__(model=MatchMode.TYPE_CONVERT, origin=type(list(data.values())[0]))
 
     def __calc_repr__(self):
         return "|".join(f"{k}" for k in self.switch if k != Ellipsis)

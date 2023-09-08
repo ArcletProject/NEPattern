@@ -3,7 +3,7 @@ from nepattern import *
 def test_type():
     import re
 
-    assert isinstance(re.compile(""), TPattern)
+    assert isinstance(re.compile(""), TPattern)  # type: ignore
 
 
 def test_result():
@@ -12,6 +12,10 @@ def test_result():
     assert not res.failed
     assert not res.or_default
     assert not res.error
+    assert NUMBER.validate(123).value == 123
+    assert NUMBER.validate("123").value == 123
+    assert NUMBER.validate(123.456).value == 123.456
+    assert NUMBER.validate("123.456").value == 123.456
     res1 = NUMBER.validate([], -1)
     assert res1.or_default
     assert not res1.failed
@@ -71,10 +75,11 @@ def test_pattern_regex():
 
 def test_pattern_regex_convert():
     """测试 BasePattern 的正则转换模式, 正则匹配成功后再进行类型转换"""
-    pat4 = BasePattern(r"\[at:(\d+)\]", MatchMode.REGEX_CONVERT, int)
+    pat4 = BasePattern(r"\[at:(\d+)\]", MatchMode.REGEX_CONVERT, int, lambda _, x: res if (res := int(x[1])) < 1000000 else None)
     assert pat4.validate("[at:123456]").value == 123456
     assert pat4.validate("[at:abcdef]").failed
     assert pat4.validate(123456).value == 123456
+    assert pat4.validate("[at:1234567]").failed
     print(pat4)
 
 
@@ -91,13 +96,13 @@ def test_pattern_type_convert():
     print(pat5)
 
     def convert(self, content):
-        if isinstance(content, str) and content.startswith(self.pattern):
-            return int(self.pattern)
+        if isinstance(content, str) and content.startswith("123"):
+            return 123
 
-    pat5_3 = BasePattern("123", MatchMode.TYPE_CONVERT, int, convert)
+    pat5_3 = BasePattern(model=MatchMode.TYPE_CONVERT, origin=int, converter=convert)
     assert pat5_3.validate("1234abcd").value == 123
     assert pat5_3.validate("abc").failed
-    pat5_3.previous = BasePattern(model=MatchMode.TYPE_CONVERT, converter=lambda _, x: f"123{x}")
+    pat5_3.previous = BasePattern(model=MatchMode.TYPE_CONVERT, origin=str, converter=lambda _, x: f"123{x}")
     assert pat5_3.validate("abc").value == 123
 
 
@@ -140,7 +145,7 @@ def test_pattern_previous():
         r"abc\[(\d+)\]",
         model=MatchMode.REGEX_CONVERT,
         origin=int,
-        converter=lambda self, x: self.origin(x),
+        converter=lambda self, x: self.origin(x[1]),
         previous=pat7,
     )
     assert pat7_1.validate("abc[123]").value == 123
@@ -202,7 +207,7 @@ def test_type_parser():
     print(pat11, pat11_1)
     pat11_2 = BasePattern.to(int)
     assert pat11_2 == pat11
-    assert not BasePattern.to(None)
+    assert BasePattern.to(None) == AnyOne
     assert type_parser(BasePattern.of(int)) == BasePattern.of(int)
     assert type_parser(AllParam) == AllParam
     assert isinstance(type_parser(Literal["a", "b"]), UnionPattern)
@@ -332,8 +337,8 @@ def test_converter_method():
     assert temp['c']
     temp.remove(complex, alias='complex')
     assert not temp.get('complex')
-    temp.set(BasePattern(alias='a'))
-    temp.set(BasePattern(origin=int, alias='b'), alias='a', cover=False)
+    temp.set(BasePattern(model=MatchMode.KEEP, alias='a'))
+    temp.set(BasePattern(model=MatchMode.KEEP,origin=int, alias='b'), alias='a', cover=False)
     temp.remove(int, alias='a')
     assert temp['a']
     temp.remove(int)
@@ -413,8 +418,8 @@ def test_dunder():
     assert (pat17.exec(1.33) >> 1).value == 1.33
     assert not '1.33' >> pat17
     assert pat17.exec(1.33) >> bool
-    assert BasePattern.of(int).validate(1).step(2) == 3
-    pat17_1 = BasePattern(r"@(\d+)")
+    assert BasePattern.of(int).validate(1).step(lambda x: x + 2) == 3
+    pat17_1 = BasePattern(r"@(\d+)", MatchMode.REGEX_CONVERT, str, lambda _, x: x[0][1:])
     pat17_2: BasePattern[int] = type_parser(int)
     assert ("@123456" >> pat17_1 >> pat17_2).value == 123456
 
@@ -444,11 +449,11 @@ def test_switch_pattern():
 
 
 def test_patterns():
-    temp = create_local_patterns("temp", {"a": BasePattern("A")})
+    temp = create_local_patterns("temp", {"a": BasePattern.on("A")})
     assert temp["a"]
     assert local_patterns() == temp
     assert all_patterns()["a"]
-    temp1 = create_local_patterns("temp1", {"b": BasePattern("B")}, set_current=False)
+    temp1 = create_local_patterns("temp1", {"b": BasePattern.on("B")}, set_current=False)
     assert temp1["b"]
     assert not local_patterns().get("b")
     switch_local_patterns("temp1")
@@ -472,7 +477,7 @@ def test_patterns():
 
 def test_rawstr():
     assert type_parser("url") == URL
-    assert type_parser(RawStr("url")) == BasePattern("url", alias="'url'")
+    assert type_parser(RawStr("url")) == DirectPattern("url", "'url'")
 
 
 def test_direct():

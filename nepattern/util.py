@@ -11,8 +11,8 @@ if sys.version_info >= (3, 10):   # pragma: no cover
     from types import GenericAlias as CGenericAlias  # noqa
     from types import UnionType as CUnionType  # noqa
 else:
-    CGenericAlias = type(List[int])
-    CUnionType = type(Union[int, str])
+    CGenericAlias: type = type(List[int])  # noqa
+    CUnionType: type = type(Union[int, str])  # noqa
 
 if TYPE_CHECKING:
     TPattern = Pattern[str]
