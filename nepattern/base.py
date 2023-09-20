@@ -285,7 +285,10 @@ class ForwardRefPattern(BasePattern[Any]):
         if isinstance(input_, str) and input_ == self.ref.__forward_arg__:
             return input_
         _main = sys.modules["__main__"]
-        origin = self.ref._evaluate(_main.__dict__, _main.__dict__)
+        if sys.version_info < (3, 9):  # pragma: no cover
+            origin = self.ref._evaluate(_main.__dict__, _main.__dict__)
+        else:  # pragma: no cover
+            origin = self.ref._evaluate(_main.__dict__, _main.__dict__, frozenset())  # type: ignore
         if not isinstance(input_, origin):  # type: ignore
             raise MatchFailed(
                 lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_)
