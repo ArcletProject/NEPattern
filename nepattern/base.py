@@ -4,13 +4,15 @@ from datetime import datetime
 from pathlib import Path
 import re
 import sys
-from typing import Any, Dict, ForwardRef, Iterable, Literal, Match, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, ForwardRef, Iterable, Literal, Match, TypeVar, Union, cast
 
 from tarina import DateParser, Empty, lang
 
 from .core import BasePattern, MatchMode, ResultFlag, ValidateResult
 from .exception import MatchFailed
 from .util import TPattern
+
+TDefault = TypeVar("TDefault")
 
 
 class DirectPattern(BasePattern):
@@ -88,7 +90,7 @@ class UnionPattern(BasePattern):
     for_validate: list[BasePattern]
     for_equal: list[str | object]
 
-    def __init__(self, base: Iterable[BasePattern | object | str], anti: bool = False):
+    def __init__(self, base: Iterable[BasePattern | object | str]):
         self.base = list(base)
         self.optional = False
         self.for_validate = []
@@ -103,7 +105,7 @@ class UnionPattern(BasePattern):
             else:
                 self.for_equal.append(arg)
         alias_content = "|".join([repr(a) for a in self.for_validate] + [repr(a) for a in self.for_equal])
-        super().__init__(mode=MatchMode.KEEP, origin=str, alias=alias_content, anti=anti)
+        super().__init__(mode=MatchMode.KEEP, origin=str, alias=alias_content)
 
     def match(self, text: Any):
         if not text:
@@ -118,7 +120,7 @@ class UnionPattern(BasePattern):
         return text
 
     def __calc_repr__(self):
-        return ("!" if self.anti else "") + ("|".join(repr(a) for a in (*self.for_validate, *self.for_equal)))
+        return "|".join(repr(a) for a in (*self.for_validate, *self.for_equal))
 
     def prefixed(self) -> UnionPattern:
         from .main import parser
@@ -126,7 +128,6 @@ class UnionPattern(BasePattern):
         return UnionPattern(
             [pat.prefixed() for pat in self.for_validate]
             + [parser(eq).prefixed() if isinstance(eq, str) else eq for eq in self.for_equal],  # type: ignore
-            self.anti,
         )
 
     def suffixed(self) -> UnionPattern:
@@ -135,7 +136,6 @@ class UnionPattern(BasePattern):
         return UnionPattern(
             [pat.suffixed() for pat in self.for_validate]
             + [parser(eq).suffixed() if isinstance(eq, str) else eq for eq in self.for_equal],  # type: ignore
-            self.anti,
         )
 
 
@@ -310,6 +310,37 @@ class ForwardRefPattern(BasePattern[Any]):
                 )
             )
         return input_
+
+
+class AntiPattern(BasePattern[Any]):
+    def __init__(self, pattern: BasePattern[Any]):
+        self.base = pattern
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Any, alias=f"!{pattern}")
+
+    def validate(self, input_: Any, default: TDefault | Empty = Empty) -> ValidateResult[Any | TDefault]:
+        """
+        对传入的值进行反向验证，返回可能的匹配与转化结果。
+
+        若传入默认值，验证失败会返回默认值
+        """
+        try:
+            res = self.base.match(input_)
+        except MatchFailed:
+            return ValidateResult(value=input_, flag=ResultFlag.VALID)
+        else:  # pragma: no cover
+            for i in self.base.validators + self.validators:
+                if not i(res):
+                    return ValidateResult(value=input_, flag=ResultFlag.VALID)
+            if default is Empty:
+                return ValidateResult(
+                    error=MatchFailed(
+                        lang.require("nepattern", "content_error").format(target=input_, expected=self._repr)
+                    ),
+                    flag=ResultFlag.ERROR,
+                )
+            if TYPE_CHECKING:
+                default = cast(TDefault, default)
+            return ValidateResult(default, flag=ResultFlag.DEFAULT)
 
 
 NONE = BasePattern(mode=MatchMode.KEEP, origin=None, alias="none")  # type: ignore

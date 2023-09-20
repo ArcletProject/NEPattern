@@ -4,6 +4,7 @@ from tarina import Empty as Empty  # noqa
 
 from .base import ANY as ANY
 from .base import AnyString as AnyString
+from .base import AntiPattern as AntiPattern
 from .base import BOOLEAN as BOOLEAN
 from .base import DATETIME as DATETIME
 from .base import DICT as DICT

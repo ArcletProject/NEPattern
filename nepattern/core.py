@@ -105,7 +105,7 @@ class ValidateResult(Generic[TVOrigin]):
             return self.success  # type: ignore
         if callable(other) and self.success:
             return other(self.value)
-        return other.exec(self.value) if isinstance(other, BasePattern) else self
+        return other.validate(self.value) if isinstance(other, BasePattern) else self
 
     @overload
     def __rshift__(self, other: BasePattern[T]) -> ValidateResult[T]:
@@ -146,7 +146,6 @@ class BasePattern(Generic[TOrigin]):
     converter: Callable[[BasePattern[TOrigin], Any], TOrigin | None]
     validators: list[Callable[[TOrigin], bool]]
 
-    anti: bool
     origin: type[TOrigin]
     pattern_accepts: tuple[BasePattern, ...]
     type_accepts: tuple[type, ...]
@@ -158,7 +157,6 @@ class BasePattern(Generic[TOrigin]):
         "pattern",
         "mode",
         "converter",
-        "anti",
         "origin",
         "pattern_accepts",
         "type_accepts",
@@ -180,7 +178,6 @@ class BasePattern(Generic[TOrigin]):
         previous: BasePattern | None = None,
         accepts: list[type | BasePattern] | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
-        anti: bool = False,
     ):
         ...
 
@@ -195,7 +192,6 @@ class BasePattern(Generic[TOrigin]):
         previous: BasePattern | None = None,
         accepts: list[type | BasePattern] | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
-        anti: bool = False,
     ):
         ...
 
@@ -210,7 +206,6 @@ class BasePattern(Generic[TOrigin]):
         previous: BasePattern | None = None,
         accepts: list[type | BasePattern] | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
-        anti: bool = False,
     ):
         ...
 
@@ -225,7 +220,6 @@ class BasePattern(Generic[TOrigin]):
         previous: BasePattern | None = None,
         accepts: list[type | BasePattern] | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
-        anti: bool = False,
     ):
         ...
 
@@ -239,7 +233,6 @@ class BasePattern(Generic[TOrigin]):
         previous: BasePattern | None = None,
         accepts: list[type | BasePattern] | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
-        anti: bool = False,
     ):
         """
         初始化参数匹配表达式
@@ -259,7 +252,6 @@ class BasePattern(Generic[TOrigin]):
             lambda _, x: (get_origin(origin) or origin)(x) if mode == MatchMode.TYPE_CONVERT else eval(x[0])
         )
         self.validators = validators or []
-        self.anti = anti
         self._repr = self.__calc_repr__()
         self._hash = hash(self._repr)
         if not self.pattern_accepts and not self.type_accepts:
@@ -267,11 +259,11 @@ class BasePattern(Generic[TOrigin]):
         elif not self.pattern_accepts:
             self._accept = lambda x: generic_isinstance(x, self.type_accepts)
         elif not self.type_accepts:
-            self._accept = lambda x: any(map(lambda y: y.exec(x).flag == "valid", self.pattern_accepts))
+            self._accept = lambda x: any(map(lambda y: y.validate(x).flag == "valid", self.pattern_accepts))
         else:
             self._accept = lambda x: (
                 generic_isinstance(x, self.type_accepts)
-                or any(map(lambda y: y.exec(x).flag == "valid", self.pattern_accepts))
+                or any(map(lambda y: y.validate(x).flag == "valid", self.pattern_accepts))
             )
 
     def __calc_repr__(self):
@@ -303,7 +295,7 @@ class BasePattern(Generic[TOrigin]):
             text = self.alias
         return (
             f"{f'{self.previous.__repr__()} -> ' if self.previous and id(self.previous) != id(self) else ''}"
-            f"{'!' if self.anti else ''}{text}"
+            f"{text}"
         )
 
     def __repr__(self):
@@ -337,13 +329,6 @@ class BasePattern(Generic[TOrigin]):
 
         res = parser(content, "allow")
         return res if isinstance(res, BasePattern) else parser(Any)
-
-    def reverse(self) -> Self:
-        """改变 pattern 的 anti 值"""
-        self.anti = not self.anti
-        self._repr = self.__calc_repr__()
-        self._hash = hash(self._repr)
-        return self
 
     def prefixed(self):
         """让表达式能在某些场景下实现前缀匹配; 返回自身的拷贝"""
@@ -440,58 +425,8 @@ class BasePattern(Generic[TOrigin]):
                 default = cast(TDefault, default)
             return ValidateResult(default, flag=ResultFlag.DEFAULT)
 
-    @overload
-    def invalidate(self, input_: Any) -> ValidateResult[Any]:
-        ...
-
-    @overload
-    def invalidate(self, input_: Any, default: TDefault) -> ValidateResult[Any | TDefault]:
-        ...
-
-    def invalidate(self, input_: Any, default: TDefault | Empty = Empty) -> ValidateResult[Any | TDefault]:
-        """
-        对传入的值进行反向验证，返回可能的匹配与转化结果。
-
-        若传入默认值，验证失败会返回默认值
-        """
-        try:
-            res = self.match(input_)
-        except MatchFailed:
-            return ValidateResult(value=input_, flag=ResultFlag.VALID)
-        else:
-            for i in self.validators:
-                if not i(res):
-                    return ValidateResult(value=input_, flag=ResultFlag.VALID)
-            if default is Empty:
-                return ValidateResult(
-                    error=MatchFailed(
-                        lang.require("nepattern", "content_error").format(target=input_, expected=self._repr)
-                    ),
-                    flag=ResultFlag.ERROR,
-                )
-            if TYPE_CHECKING:
-                default = cast(TDefault, default)
-            return ValidateResult(default, flag=ResultFlag.DEFAULT)
-
-    @overload
-    def exec(self, input_: Any) -> ValidateResult[TOrigin]:
-        ...
-
-    @overload
-    def exec(self, input_: Any, default: TDefault) -> ValidateResult[TOrigin | TDefault]:
-        ...
-
-    def exec(self, input_: Any, default: TDefault | Empty = Empty) -> ValidateResult[TOrigin | TDefault]:
-        """
-        依据 anti 值 自动选择验证方式
-        """
-        if self.anti:
-            return self.invalidate(input_, default)  # type: ignore
-        else:
-            return self.validate(input_, default)  # type: ignore
-
     def __rrshift__(self, other):
-        return self.exec(other)
+        return self.validate(other)
 
     def __rmatmul__(self, other) -> Self:  # pragma: no cover
         if isinstance(other, str):

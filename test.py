@@ -164,16 +164,12 @@ def test_pattern_previous():
 def test_pattern_anti():
     """测试 BasePattern 的反向验证功能"""
     pat8 = BasePattern.of(int)
-    assert pat8.validate(123).success
-    assert pat8.invalidate(123).failed
+    pat8_1 = AntiPattern(pat8)
+    assert pat8.validate(123).value == 123
     assert pat8.validate("123").failed
-    assert pat8.invalidate("123").success
-    pat8.reverse()
-    assert pat8.exec(123).failed
-    assert pat8.exec("123").success
-    pat8.reverse()
-    assert pat8.exec(123).success
-    assert pat8.exec("123").failed
+    assert pat8_1.validate(123).failed
+    assert pat8_1.validate("123").value == "123"
+
 
 
 def test_pattern_validator():
@@ -183,17 +179,15 @@ def test_pattern_validator():
     )
     assert pat9.validate(23).value == 23
     assert pat9.validate(-23).failed
-    assert pat9.invalidate(-23).success
     pat9_1 = BasePattern.to(set_unit(int, lambda x: x != 0))
-    assert pat9_1.invalidate("123").failed
     print(pat9)
 
 
 def test_pattern_default():
     pat10 = BasePattern.of(int)
     assert pat10.validate("123", 123).or_default
-    assert pat10.invalidate("123", 123).success
-    assert pat10.invalidate(123, "123").value == "123"
+    assert pat10.validate("123", 123).value == 123
+    assert AntiPattern(pat10).validate(123, "123").value == "123"
 
 
 def test_parser():
@@ -413,10 +407,10 @@ def test_suffix():
 def test_dunder():
     pat17 = BasePattern.of(float)
     assert ("test_float" @ pat17).alias == "test_float"
-    assert pat17.exec(1.33).step(str) == pat17.exec(1.33) >> str == "1.33"
-    assert (pat17.exec(1.33) >> 1).value == 1.33
+    assert pat17.validate(1.33).step(str) == pat17.validate(1.33) >> str == "1.33"
+    assert (pat17.validate(1.33) >> 1).value == 1.33
     assert not '1.33' >> pat17
-    assert pat17.exec(1.33) >> bool
+    assert pat17.validate(1.33) >> bool
     assert BasePattern.of(int).validate(1).step(lambda x: x + 2) == 3
     pat17_1 = BasePattern(r"@(\d+)", MatchMode.REGEX_CONVERT, str, lambda _, x: x[0][1:])
     pat17_2: BasePattern[int] = parser(int)
