@@ -6,7 +6,7 @@ import re
 import sys
 from typing import Any, Dict, ForwardRef, Iterable, Literal, Match, TypeVar, Union
 
-from tarina import Empty, DateParser, lang
+from tarina import DateParser, Empty, lang
 
 from .core import BasePattern, MatchMode, ResultFlag, ValidateResult
 from .exception import MatchFailed
@@ -32,20 +32,26 @@ class DirectPattern(BasePattern):
 
     def match(self, input_: Any):
         if input_ != self.target:
-            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.target))
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_, expected=self.target)
+            )
         return input_
 
     def validate(self, input_: Any, default: Any = Empty):
         if input_ == self.target:
             return ValidateResult(input_, flag=ResultFlag.VALID)
-        e = MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.target))
+        e = MatchFailed(
+            lang.require("nepattern", "content_error").format(target=input_, expected=self.target)
+        )
         if default is Empty:
             return ValidateResult(error=e, flag=ResultFlag.ERROR)
         return ValidateResult(default, flag=ResultFlag.DEFAULT)
 
     def invalidate(self, input_: Any, default: Any = Empty) -> ValidateResult[Any]:
         if input_ == self.target:
-            e = MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=f"!{self.target}"))
+            e = MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_, expected=f"!{self.target}")
+            )
             if default is Empty:
                 return ValidateResult(error=e, flag=ResultFlag.ERROR)
             return ValidateResult(default, flag=ResultFlag.DEFAULT)
@@ -63,11 +69,15 @@ class RegexPattern(BasePattern[Match[str]]):
     def match(self, input_: Any) -> Match[str]:
         if not isinstance(input_, str):
             raise MatchFailed(
-                lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_)
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected="str"
+                )
             )
         if mat := self.regex_pattern.match(input_):
             return mat
-        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.pattern))
+        raise MatchFailed(
+            lang.require("nepattern", "content_error").format(target=input_, expected=self.pattern)
+        )
 
 
 class UnionPattern(BasePattern):
@@ -102,7 +112,9 @@ class UnionPattern(BasePattern):
             for pat in self.for_validate:
                 if (res := pat.validate(text)).success:
                     return res.value
-            raise MatchFailed(lang.require("nepattern", "content_error").format(target=text, expected=self.alias))
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=text, expected=self.alias)
+            )
         return text
 
     def __calc_repr__(self):
@@ -273,7 +285,9 @@ class SwitchPattern(BasePattern[_TCase]):
         except KeyError as e:
             if Ellipsis in self.switch:
                 return self.switch[...]
-            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self._repr)) from e
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_, expected=self._repr)
+            ) from e
 
 
 class ForwardRefPattern(BasePattern[Any]):
@@ -291,7 +305,9 @@ class ForwardRefPattern(BasePattern[Any]):
             origin = self.ref._evaluate(_main.__dict__, _main.__dict__, frozenset())  # type: ignore
         if not isinstance(input_, origin):  # type: ignore
             raise MatchFailed(
-                lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_)
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected=self.ref.__forward_arg__
+                )
             )
         return input_
 
@@ -361,7 +377,6 @@ HEX = BasePattern(
 
 HEX_COLOR = BasePattern(r"(#[0-9a-fA-F]{6})", MatchMode.REGEX_CONVERT, str, lambda _, x: x[1][1:], "color")
 """匹配16进制颜色代码的表达式"""
-
 
 
 DATETIME = BasePattern(

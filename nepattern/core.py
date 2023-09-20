@@ -375,27 +375,35 @@ class BasePattern(Generic[TOrigin]):
                 input_ := self.previous.match(input_)
             ):  # pragma: no cover
                 raise MatchFailed(
-                    lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_)
+                    lang.require("nepattern", "type_error").format(
+                        type=input_.__class__, target=input_, expected=self.alias
+                    )
                 )
         if self.mode == 0:
             return input_  # type: ignore
         if self.mode == 2:
             res = self.converter(self, input_)
             if res is None and self.origin is Any:  # pragma: no cover
-                raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
+                raise MatchFailed(
+                    lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
+                )
             if not generic_isinstance(res, self.origin):
                 if not self.previous or not generic_isinstance(
                     res := self.converter(self, self.previous.match(input_)),
                     self.origin,
                 ):
-                    raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
+                    raise MatchFailed(
+                        lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
+                    )
             if TYPE_CHECKING:
                 assert res is not None
             return res
         if input_.__class__ is not str:
             if not self.previous or not isinstance(input_ := self.previous.match(input_), str):
                 raise MatchFailed(
-                    lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_)
+                    lang.require("nepattern", "type_error").format(
+                        type=input_.__class__, target=input_, expected=self.alias
+                    )
                 )
         if mat := (self.regex_pattern.match(input_) or self.regex_pattern.search(input_)):
             if self.mode == 1:
@@ -403,7 +411,8 @@ class BasePattern(Generic[TOrigin]):
             if (res := self.converter(self, mat)) is not None:
                 return res
         raise MatchFailed(
-            lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
+            lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
+        )
 
     @overload
     def validate(self, input_: Any) -> ValidateResult[TOrigin]:
@@ -455,7 +464,9 @@ class BasePattern(Generic[TOrigin]):
                     return ValidateResult(value=input_, flag=ResultFlag.VALID)
             if default is Empty:
                 return ValidateResult(
-                    error=MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self._repr)),
+                    error=MatchFailed(
+                        lang.require("nepattern", "content_error").format(target=input_, expected=self._repr)
+                    ),
                     flag=ResultFlag.ERROR,
                 )
             if TYPE_CHECKING:
