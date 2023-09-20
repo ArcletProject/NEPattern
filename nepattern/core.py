@@ -3,8 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 from enum import Enum, IntEnum
 import re
-from typing import TYPE_CHECKING, Any, Callable, Generic, Literal, TypeVar, cast, overload
-from typing_extensions import Annotated, Self, get_origin
+from typing import Any, Callable, Generic, Literal, TypeVar, overload
+from typing_extensions import Annotated, Self, get_args, get_origin, NoReturn
 
 from tarina import Empty, generic_isinstance
 from tarina.lang import lang
@@ -16,6 +16,8 @@ from .util import TPattern
 class MatchMode(IntEnum):
     """参数表达式匹配模式"""
 
+    VALUE_OPERATE = 4
+    """传入值进行操作"""
     REGEX_CONVERT = 3
     """正则匹配并转换"""
     TYPE_CONVERT = 2
@@ -38,19 +40,22 @@ class ResultFlag(str, Enum):
 
 
 T = TypeVar("T")
+TInput = TypeVar("TInput")
+TInput1 = TypeVar("TInput1")
 TOrigin = TypeVar("TOrigin")
 TVOrigin = TypeVar("TVOrigin")
 TDefault = TypeVar("TDefault")
+TVRF = TypeVar("TVRF", bound=ResultFlag)
 
 
-class ValidateResult(Generic[TVOrigin]):
+class ValidateResult(Generic[TVOrigin, TVRF]):
     """参数表达式验证结果"""
 
     def __init__(
         self,
         value: TVOrigin | type[Empty] = Empty,
         error: Exception | type[Empty] = Empty,
-        flag: ResultFlag = ResultFlag.VALID,
+        flag: TVRF = ResultFlag.VALID,
     ):
         self._value = value
         self._error = error
@@ -58,13 +63,35 @@ class ValidateResult(Generic[TVOrigin]):
 
     __slots__ = ("_value", "_error", "flag")
 
-    @property
+    @overload
+    def value(self: ValidateResult[TVOrigin, Literal[ResultFlag.VALID]]) -> TVOrigin:
+        ...
+
+    @overload
+    def value(self: ValidateResult[Any, Literal[ResultFlag.ERROR]]) -> NoReturn:
+        ...
+
+    @overload
+    def value(self: ValidateResult[TVOrigin, Literal[ResultFlag.DEFAULT]]) -> TVOrigin:
+        ...
+
     def value(self) -> TVOrigin:
         if self.flag == ResultFlag.ERROR or self._value == Empty:
             raise RuntimeError("cannot access value")
         return self._value  # type: ignore
 
-    @property
+    @overload
+    def error(self: ValidateResult[Any, Literal[ResultFlag.VALID]]) -> None:
+        ...
+
+    @overload
+    def error(self: ValidateResult[Any, Literal[ResultFlag.ERROR]]) -> Exception:
+        ...
+
+    @overload
+    def error(self: ValidateResult[Any, Literal[ResultFlag.DEFAULT]]) -> None:
+        ...
+
     def error(self) -> Exception | None:
         if self.flag == ResultFlag.ERROR and self._error != Empty:
             assert isinstance(self._error, Exception)
@@ -83,7 +110,7 @@ class ValidateResult(Generic[TVOrigin]):
         return self.flag == ResultFlag.DEFAULT
 
     @overload
-    def step(self, other: BasePattern[T]) -> ValidateResult[T]:
+    def step(self, other: BasePattern[T, TVOrigin]) -> ValidateResult[T, TVRF]:
         ...
 
     @overload
@@ -99,16 +126,16 @@ class ValidateResult(Generic[TVOrigin]):
         ...
 
     def step(
-        self, other: type[T] | Callable[[TVOrigin], T] | Any | BasePattern[T]
-    ) -> T | Self | ValidateResult[T]:
+        self, other: type[T] | Callable[[TVOrigin], T] | Any | BasePattern[T, TVOrigin]
+    ) -> T | Self | ValidateResult[T, TVRF]:
         if other is bool:
             return self.success  # type: ignore
         if callable(other) and self.success:
-            return other(self.value)
-        return other.validate(self.value) if isinstance(other, BasePattern) else self
+            return other(self.value())  # type: ignore
+        return other.validate(self.value()) if isinstance(other, BasePattern) else self  # type: ignore
 
     @overload
-    def __rshift__(self, other: BasePattern[T]) -> ValidateResult[T]:
+    def __rshift__(self, other: BasePattern[T, TVOrigin]) -> ValidateResult[T, TVRF]:
         ...
 
     @overload
@@ -123,8 +150,20 @@ class ValidateResult(Generic[TVOrigin]):
     def __rshift__(self, other: Any) -> Self:
         ...
 
-    def __rshift__(self, other: type[T] | Callable[[TVOrigin], T] | Any) -> T | Self | ValidateResult[T]:
+    def __rshift__(self, other: type[T] | Callable[[TVOrigin], T] | Any) -> T | Self | ValidateResult[T, TVRF]:
         return self.step(other)  # type: ignore
+
+    @overload
+    def __bool__(self: ValidateResult[Any, Literal[ResultFlag.VALID]]) -> Literal[True]:
+        ...
+
+    @overload
+    def __bool__(self: ValidateResult[Any, Literal[ResultFlag.ERROR]]) -> Literal[False]:
+        ...
+
+    @overload
+    def __bool__(self: ValidateResult[Any, Literal[ResultFlag.DEFAULT]]) -> Literal[True]:
+        ...
 
     def __bool__(self):
         return self.success
@@ -137,20 +176,120 @@ class ValidateResult(Generic[TVOrigin]):
         return f"ValidateResult(default={self._value!r})"
 
 
-class BasePattern(Generic[TOrigin]):
+def _keep(self: BasePattern[Any, Any], input_: Any) -> Any:
+    if not self.accept(input_) and (
+        not self.previous or not self.accept(input_ := self.previous.match(input_))
+    ):  # pragma: no cover
+        raise MatchFailed(
+            lang.require("nepattern", "type_error").format(
+                type=input_.__class__, target=input_, expected=self.alias
+            )
+        )
+    return input_
+
+
+def _regex_match(self: BasePattern[str, str], input_: Any) -> str:
+    if not isinstance(input_, str) and (
+        not self.previous or not isinstance(input_ := self.previous.match(input_), str)
+    ):  # pragma: no cover
+        raise MatchFailed(
+            lang.require("nepattern", "type_error").format(
+                type=input_.__class__, target=input_, expected=self.alias
+            )
+        )
+    if mat := (self.regex_pattern.match(input_) or self.regex_pattern.search(input_)):
+        return mat[0]
+    raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
+
+
+def _regex_convert(self: BasePattern[TOrigin, str | TOrigin], input_: Any) -> TOrigin:
+    if self.origin not in (str, Any) and generic_isinstance(input_, self.origin):
+        return input_  # type: ignore
+    if not isinstance(input_, str) and (
+        not self.previous or not isinstance(input_ := self.previous.match(input_), str)
+    ):  # pragma: no cover
+        raise MatchFailed(
+            lang.require("nepattern", "type_error").format(
+                type=input_.__class__, target=input_, expected=self.alias
+            )
+        )
+    if mat := (self.regex_pattern.match(input_) or self.regex_pattern.search(input_)):
+        if (res := self.converter(self, mat)) is not None:
+            return res
+    raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
+
+
+def _type_convert(self: BasePattern[TOrigin, Any], input_: Any) -> TOrigin:
+    if self.origin is not Any and generic_isinstance(input_, self.origin):
+        return input_
+    if not self.accept(input_) and (
+        not self.previous or not self.accept(input_ := self.previous.match(input_))
+    ):  # pragma: no cover
+        raise MatchFailed(
+            lang.require("nepattern", "type_error").format(
+                type=input_.__class__, target=input_, expected=self.alias
+            )
+        )
+    res = self.converter(self, input_)
+    if res is None and self.origin is Any:
+        raise MatchFailed(
+            lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
+        )
+    if not generic_isinstance(res, self.origin) and (
+        not self.previous
+        or not generic_isinstance(res := self.converter(self, self.previous.match(input_)), self.origin)
+    ):
+        raise MatchFailed(
+            lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
+        )
+    return res  # type: ignore
+
+
+def _value_operate(self: BasePattern[TOrigin, TOrigin], input_: Any) -> TOrigin:
+    if not generic_isinstance(input_, self.origin) and (
+        not self.previous or not generic_isinstance(input_ := self.previous.match(input_), self.origin)
+    ):  # pragma: no cover
+        raise MatchFailed(
+            lang.require("nepattern", "type_error").format(
+                type=input_.__class__, target=input_, expected=self.alias
+            )
+        )
+    res = self.converter(self, input_)
+    if res is None and self.origin is Any:
+        raise MatchFailed(
+            lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
+        )
+    if not generic_isinstance(res, self.origin) and (
+        not self.previous
+        or not generic_isinstance(res := self.converter(self, self.previous.match(input_)), self.origin)
+    ):
+        raise MatchFailed(
+            lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
+        )
+    return res  # type: ignore
+
+
+class BasePattern(Generic[TOrigin, TInput]):
     """对参数类型值的包装"""
 
     regex_pattern: TPattern  # type: ignore
     pattern: str
     mode: MatchMode
-    converter: Callable[[BasePattern[TOrigin], Any], TOrigin | None]
+    converter: Callable[[BasePattern[TOrigin, TInput], Any], TOrigin | None]
     validators: list[Callable[[TOrigin], bool]]
 
     origin: type[TOrigin]
-    pattern_accepts: tuple[BasePattern, ...]
-    type_accepts: tuple[type, ...]
     alias: str | None
     previous: BasePattern | None
+    match: Callable[[TInput], TOrigin]
+
+    _MATCHES = {
+        MatchMode.KEEP: _keep,
+        MatchMode.REGEX_MATCH: _regex_match,
+        MatchMode.REGEX_CONVERT: _regex_convert,
+        MatchMode.TYPE_CONVERT: _type_convert,
+        MatchMode.VALUE_OPERATE: _value_operate,
+    }
 
     __slots__ = (
         "regex_pattern",
@@ -163,62 +302,99 @@ class BasePattern(Generic[TOrigin]):
         "alias",
         "previous",
         "validators",
+        "match",
+        "accept",
         "_hash",
         "_repr",
-        "_accept",
     )
 
     @overload
     def __init__(
-        self,
+        self: BasePattern[TOrigin, TInput],
         *,
         mode: Literal[MatchMode.KEEP],
         origin: type[TOrigin] = Any,
         alias: str | None = None,
-        previous: BasePattern | None = None,
-        accepts: list[type | BasePattern] | None = None,
+        previous: None = None,
+        accepts: type[TInput] = Any,
+        addition_accepts: list[BasePattern] | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
     ):
         ...
 
     @overload
     def __init__(
-        self,
+        self: BasePattern[str, str],
         pattern: str,
         mode: Literal[MatchMode.REGEX_MATCH],
         origin: type[TOrigin] = str,
-        converter: Callable[[BasePattern[TOrigin], str], TOrigin | None] | None = None,
+        converter: Callable[[BasePattern[str, str], str], TOrigin | None] | None = None,
         alias: str | None = None,
-        previous: BasePattern | None = None,
-        accepts: list[type | BasePattern] | None = None,
+        previous: BasePattern[str, Any] | None = None,
+        accepts: type[TInput] = str,
+        addition_accepts: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
     ):
         ...
 
     @overload
     def __init__(
-        self,
+        self: BasePattern[TOrigin, str | TOrigin],
         pattern: str,
         mode: Literal[MatchMode.REGEX_CONVERT],
         origin: type[TOrigin],
-        converter: Callable[[BasePattern[TOrigin], re.Match[str]], TOrigin | None] | None = None,
+        converter: Callable[[BasePattern[TOrigin, str | TOrigin], re.Match[str]], TOrigin | None]
+        | None = None,
         alias: str | None = None,
-        previous: BasePattern | None = None,
-        accepts: list[type | BasePattern] | None = None,
+        previous: None = None,
+        accepts: type[TInput] = str,
+        addition_accepts: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
     ):
         ...
 
     @overload
     def __init__(
-        self,
+        self: BasePattern[TOrigin, str | TOrigin | TInput1],
+        pattern: str,
+        mode: Literal[MatchMode.REGEX_CONVERT],
+        origin: type[TOrigin],
+        converter: Callable[[BasePattern[TOrigin, str | TOrigin], re.Match[str]], TOrigin | None]
+        | None = None,
+        alias: str | None = None,
+        previous: BasePattern[str, TInput1] | None = None,
+        accepts: type[TInput] = str,
+        addition_accepts: None = None,
+        validators: list[Callable[[TOrigin], bool]] | None = None,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: BasePattern[TOrigin, TInput],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         origin: type[TOrigin],
-        converter: Callable[[BasePattern[TOrigin], Any], TOrigin | None] | None = None,
+        converter: Callable[[BasePattern[TOrigin, TInput], Any], TOrigin | None] | None = None,
         alias: str | None = None,
-        previous: BasePattern | None = None,
-        accepts: list[type | BasePattern] | None = None,
+        previous: BasePattern[TInput, Any] | None = None,
+        accepts: type[TInput] = Any,
+        addition_accepts: list[BasePattern] | None = None,
+        validators: list[Callable[[TOrigin], bool]] | None = None,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: BasePattern[TOrigin, TOrigin],
+        *,
+        mode: Literal[MatchMode.VALUE_OPERATE],
+        origin: type[TOrigin],
+        converter: Callable[[BasePattern[TOrigin, TOrigin], TOrigin], TOrigin | None] | None = None,
+        alias: str | None = None,
+        previous: BasePattern[TOrigin, Any] | None = None,
+        accepts: type[TInput] = Any,
+        addition_accepts: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
     ):
         ...
@@ -228,10 +404,11 @@ class BasePattern(Generic[TOrigin]):
         pattern: str = ".+",
         mode: MatchMode = MatchMode.REGEX_MATCH,
         origin: type[TOrigin] = str,
-        converter: Callable[[BasePattern[TOrigin], Any], TOrigin | None] | None = None,
+        converter: Callable[[BasePattern, Any], TOrigin | None] | None = None,
         alias: str | None = None,
         previous: BasePattern | None = None,
-        accepts: list[type | BasePattern] | None = None,
+        accepts: type[TInput] = Any,
+        addition_accepts: list[BasePattern] | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
     ):
         """
@@ -245,26 +422,29 @@ class BasePattern(Generic[TOrigin]):
         self.origin = origin
         self.alias = alias
         self.previous = previous
-        accepts = accepts or []
-        self.pattern_accepts = tuple(filter(lambda x: isinstance(x, BasePattern), accepts))  # type: ignore
-        self.type_accepts = tuple(filter(lambda x: not isinstance(x, BasePattern), accepts))  # type: ignore
         self.converter = converter or (
             lambda _, x: (get_origin(origin) or origin)(x) if mode == MatchMode.TYPE_CONVERT else eval(x[0])
         )
         self.validators = validators or []
+        self.type_accepts = () if accepts is Any else (get_args(accepts) or (accepts,))
+        self.pattern_accepts = tuple(addition_accepts) if addition_accepts else ()
         self._repr = self.__calc_repr__()
         self._hash = hash(self._repr)
-        if not self.pattern_accepts and not self.type_accepts:
-            self._accept = lambda _: True
-        elif not self.pattern_accepts:
-            self._accept = lambda x: generic_isinstance(x, self.type_accepts)
-        elif not self.type_accepts:
-            self._accept = lambda x: any(map(lambda y: y.validate(x).flag == "valid", self.pattern_accepts))
+        if not addition_accepts:
+            self.accept = lambda _: True if accepts is Any else generic_isinstance(_, accepts)
+        elif accepts is Any:
+            self.accept = lambda _: any(map(lambda x: x.validate(_).flag == "valid", addition_accepts))
         else:
-            self._accept = lambda x: (
-                generic_isinstance(x, self.type_accepts)
-                or any(map(lambda y: y.validate(x).flag == "valid", self.pattern_accepts))
+            self.accept = lambda _: (
+                generic_isinstance(_, accepts)
+                or any(map(lambda x: x.validate(_).flag == "valid", addition_accepts))
             )
+        if not hasattr(self, "match"):
+            self.match = self._MATCHES[self.mode].__get__(self)  # type: ignore
+
+    def refresh(self):  # pragma: no cover
+        self._repr = self.__calc_repr__()
+        self._hash = hash(self._repr)
 
     def __calc_repr__(self):
         if self.mode == MatchMode.KEEP:
@@ -311,12 +491,12 @@ class BasePattern(Generic[TOrigin]):
         return isinstance(other, BasePattern) and self._repr == other._repr
 
     @staticmethod
-    def of(unit: type[TOrigin]) -> BasePattern[TOrigin]:
+    def of(unit: type[TOrigin]) -> BasePattern[TOrigin, TOrigin]:
         """提供 Type[DataUnit] 类型的构造方法"""
-        return BasePattern(mode=MatchMode.KEEP, origin=unit, alias=unit.__name__, accepts=[unit])
+        return BasePattern(mode=MatchMode.KEEP, origin=unit, alias=unit.__name__, accepts=unit)
 
     @staticmethod
-    def on(obj: TOrigin) -> BasePattern[TOrigin]:
+    def on(obj: TOrigin) -> BasePattern[TOrigin, TOrigin]:
         """提供 DataUnit 类型的构造方法"""
         from .base import DirectPattern
 
@@ -344,70 +524,23 @@ class BasePattern(Generic[TOrigin]):
             cp_self.regex_pattern = re.compile(f"{self.pattern}$")
         return cp_self
 
-    def match(self, input_: Any) -> TOrigin:
-        """
-        对传入的参数进行匹配, 如果匹配成功, 则返回转换后的值, 否则返回None
-        """
-        if (
-            self.mode > 1
-            and self.origin is not str
-            and self.origin is not Any
-            and generic_isinstance(input_, self.origin)
-        ):
-            return input_  # type: ignore
-        if not self._accept(input_):
-            if not self.previous or not self._accept(
-                input_ := self.previous.match(input_)
-            ):  # pragma: no cover
-                raise MatchFailed(
-                    lang.require("nepattern", "type_error").format(
-                        type=input_.__class__, target=input_, expected=self.alias
-                    )
-                )
-        if self.mode == 0:
-            return input_  # type: ignore
-        if self.mode == 2:
-            res = self.converter(self, input_)
-            if res is None and self.origin is Any:  # pragma: no cover
-                raise MatchFailed(
-                    lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
-                )
-            if not generic_isinstance(res, self.origin):
-                if not self.previous or not generic_isinstance(
-                    res := self.converter(self, self.previous.match(input_)),
-                    self.origin,
-                ):
-                    raise MatchFailed(
-                        lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
-                    )
-            if TYPE_CHECKING:
-                assert res is not None
-            return res
-        if input_.__class__ is not str:
-            if not self.previous or not isinstance(input_ := self.previous.match(input_), str):
-                raise MatchFailed(
-                    lang.require("nepattern", "type_error").format(
-                        type=input_.__class__, target=input_, expected=self.alias
-                    )
-                )
-        if mat := (self.regex_pattern.match(input_) or self.regex_pattern.search(input_)):
-            if self.mode == 1:
-                return mat[0]  # type: ignore
-            if (res := self.converter(self, mat)) is not None:
-                return res
-        raise MatchFailed(
-            lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
-        )
-
     @overload
-    def validate(self, input_: Any) -> ValidateResult[TOrigin]:
+    def validate(self, input_: TInput) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
         ...
 
     @overload
-    def validate(self, input_: Any, default: TDefault) -> ValidateResult[TOrigin | TDefault]:
+    def validate(self, input_: Any) -> ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]:
         ...
 
-    def validate(self, input_: Any, default: TDefault | Empty = Empty) -> ValidateResult[TOrigin | TDefault]:
+    @overload
+    def validate(self, input_: TInput, default: TDefault) -> ValidateResult[TOrigin | TDefault, Literal[ResultFlag.VALID]]:
+        ...
+
+    @overload
+    def validate(self, input_: Any, default: TDefault) -> ValidateResult[TOrigin | TDefault, Literal[ResultFlag.DEFAULT]]:
+        ...
+
+    def validate(self, input_: Any, default: TDefault | Empty = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
         """
         对传入的值进行正向验证，返回可能的匹配与转化结果。
 
@@ -421,9 +554,7 @@ class BasePattern(Generic[TOrigin]):
         except Exception as e:
             if default is Empty:
                 return ValidateResult(error=e, flag=ResultFlag.ERROR)
-            if TYPE_CHECKING:
-                default = cast(TDefault, default)
-            return ValidateResult(default, flag=ResultFlag.DEFAULT)
+            return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
 
     def __rrshift__(self, other):
         return self.validate(other)

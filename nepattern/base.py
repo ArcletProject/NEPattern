@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 import re
 import sys
-from typing import TYPE_CHECKING, Any, Dict, ForwardRef, Iterable, Literal, Match, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, ForwardRef, Iterable, Literal, Match, TypeVar, Union, cast, overload
 
 from tarina import DateParser, Empty, lang
 
@@ -12,13 +12,14 @@ from .core import BasePattern, MatchMode, ResultFlag, ValidateResult
 from .exception import MatchFailed
 from .util import TPattern
 
+TOrigin = TypeVar("TOrigin")
 TDefault = TypeVar("TDefault")
 
 
-class DirectPattern(BasePattern):
+class DirectPattern(BasePattern[TOrigin, TOrigin]):
     """直接判断"""
 
-    def __init__(self, target: Any, alias: str | None = None):
+    def __init__(self, target: TOrigin, alias: str | None = None):
         self.target = target
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=type(target), alias=alias or str(target))
 
@@ -38,8 +39,24 @@ class DirectPattern(BasePattern):
                 lang.require("nepattern", "content_error").format(target=input_, expected=self.target)
             )
         return input_
+    
+    @overload
+    def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
+        ...
 
-    def validate(self, input_: Any, default: Any = Empty):
+    @overload
+    def validate(self, input_: Any) -> ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]:
+        ...
+
+    @overload
+    def validate(self, input_: TOrigin, default: TDefault) -> ValidateResult[TOrigin | TDefault, Literal[ResultFlag.VALID]]:
+        ...
+
+    @overload
+    def validate(self, input_: Any, default: TDefault) -> ValidateResult[TOrigin | TDefault, Literal[ResultFlag.DEFAULT]]:
+        ...
+
+    def validate(self, input_: Any, default: Union[TDefault, Empty] = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
         if input_ == self.target:
             return ValidateResult(input_, flag=ResultFlag.VALID)
         e = MatchFailed(
@@ -47,20 +64,10 @@ class DirectPattern(BasePattern):
         )
         if default is Empty:
             return ValidateResult(error=e, flag=ResultFlag.ERROR)
-        return ValidateResult(default, flag=ResultFlag.DEFAULT)
-
-    def invalidate(self, input_: Any, default: Any = Empty) -> ValidateResult[Any]:
-        if input_ == self.target:
-            e = MatchFailed(
-                lang.require("nepattern", "content_error").format(target=input_, expected=f"!{self.target}")
-            )
-            if default is Empty:
-                return ValidateResult(error=e, flag=ResultFlag.ERROR)
-            return ValidateResult(default, flag=ResultFlag.DEFAULT)
-        return ValidateResult(input_, flag=ResultFlag.VALID)
+        return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
 
 
-class RegexPattern(BasePattern[Match[str]]):
+class RegexPattern(BasePattern[Match[str], str]):
     """针对正则的特化匹配，支持正则组"""
 
     def __init__(self, pattern: str | TPattern, alias: str | None = None):
@@ -113,7 +120,7 @@ class UnionPattern(BasePattern):
         if text not in self.for_equal:
             for pat in self.for_validate:
                 if (res := pat.validate(text)).success:
-                    return res.value
+                    return res.value()
             raise MatchFailed(
                 lang.require("nepattern", "content_error").format(target=text, expected=self.alias)
             )
@@ -142,7 +149,7 @@ class UnionPattern(BasePattern):
 TSeq = TypeVar("TSeq", list, tuple, set)
 
 
-class SequencePattern(BasePattern[TSeq]):
+class SequencePattern(BasePattern[TSeq, Union[str, TSeq]]):
     """匹配列表或者元组或者集合"""
 
     base: BasePattern
@@ -161,7 +168,7 @@ class SequencePattern(BasePattern[TSeq]):
             raise ValueError(lang.require("nepattern", "sequence_form_error").format(target=str(form)))
 
     def match(self, text: Any):
-        _res = super().match(text)
+        _res = self._MATCHES[MatchMode.REGEX_CONVERT](self, text)
         _max = 0
         success: list[tuple[int, Any]] = []
         fail: list[tuple[int, MatchFailed]] = []
@@ -199,14 +206,14 @@ TKey = TypeVar("TKey")
 TVal = TypeVar("TVal")
 
 
-class MappingPattern(BasePattern[Dict[TKey, TVal]]):
+class MappingPattern(BasePattern[Dict[TKey, TVal], Union[str, Dict[TKey, TVal]]]):
     """匹配字典或者映射表"""
 
-    key: BasePattern[TKey]
-    value: BasePattern[TVal]
+    key: BasePattern[TKey, Any]
+    value: BasePattern[TVal, Any]
     _mode: Literal["pre", "suf", "all"]
 
-    def __init__(self, arg_key: BasePattern[TKey], arg_value: BasePattern[TVal]):
+    def __init__(self, arg_key: BasePattern[TKey, Any], arg_value: BasePattern[TVal, Any]):
         self.key = arg_key
         self.value = arg_value
         self._mode = "all"
@@ -219,7 +226,7 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
         self.converter = lambda _, x: x[1]
 
     def match(self, text: Any):
-        _res = super().match(text)
+        _res = self._MATCHES[MatchMode.REGEX_CONVERT](self, text)
         success: list[tuple[int, Any, Any]] = []
         fail: list[tuple[int, MatchFailed]] = []
         _max = 0
@@ -267,12 +274,13 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
 
 
 _TCase = TypeVar("_TCase")
+_TSwtich = TypeVar("_TSwtich")
 
 
-class SwitchPattern(BasePattern[_TCase]):
-    switch: dict[Any, _TCase]
+class SwitchPattern(BasePattern[_TCase, _TSwtich]):
+    switch: dict[_TSwtich | ellipsis, _TCase]
 
-    def __init__(self, data: dict[Any | ellipsis, _TCase]):
+    def __init__(self, data: dict[_TSwtich | ellipsis, _TCase]):
         self.switch = data
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=type(list(data.values())[0]))
 
@@ -290,7 +298,7 @@ class SwitchPattern(BasePattern[_TCase]):
             ) from e
 
 
-class ForwardRefPattern(BasePattern[Any]):
+class ForwardRefPattern(BasePattern[Any, Any]):
     def __init__(self, ref: ForwardRef):
         self.ref = ref
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Any, alias=ref.__forward_arg__)
@@ -311,13 +319,30 @@ class ForwardRefPattern(BasePattern[Any]):
             )
         return input_
 
+_T = TypeVar("_T")
 
-class AntiPattern(BasePattern[Any]):
-    def __init__(self, pattern: BasePattern[Any]):
+class AntiPattern(BasePattern[TOrigin, Any]):
+    def __init__(self, pattern: BasePattern[TOrigin, Any]):
         self.base = pattern
-        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Any, alias=f"!{pattern}")
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=pattern.origin, alias=f"!{pattern}")
 
-    def validate(self, input_: Any, default: TDefault | Empty = Empty) -> ValidateResult[Any | TDefault]:
+    @overload
+    def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]:
+        ...
+
+    @overload
+    def validate(self, input_: _T) -> ValidateResult[_T, Literal[ResultFlag.VALID]]:
+        ...
+
+    @overload
+    def validate(self, input_: TOrigin, default: TDefault) -> ValidateResult[TOrigin | TDefault, Literal[ResultFlag.DEFAULT]]:
+        ...
+
+    @overload
+    def validate(self, input_: _T, default: TDefault) -> ValidateResult[_T | TDefault, Literal[ResultFlag.VALID]]:
+        ...
+
+    def validate(self, input_: Any, default: Union[TDefault, Empty] = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
         """
         对传入的值进行反向验证，返回可能的匹配与转化结果。
 
@@ -351,7 +376,7 @@ ANY = BasePattern(mode=MatchMode.KEEP, origin=Any, alias="any")
 AnyString = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str, alias="any_str")
 """匹配任意内容并转为字符串的表达式"""
 
-STRING = BasePattern(mode=MatchMode.KEEP, origin=str, alias="str", accepts=[str])
+STRING = BasePattern(mode=MatchMode.KEEP, origin=str, alias="str", accepts=str)
 
 INTEGER = BasePattern(r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int")
 """整形数表达式，只能接受整数样式的量"""
@@ -414,18 +439,19 @@ DATETIME = BasePattern(
     mode=MatchMode.TYPE_CONVERT,
     origin=datetime,
     alias="datetime",
-    accepts=[str, int, FLOAT],
+    accepts=Union[str, int, float],
     converter=lambda _, x: datetime.fromtimestamp(x) if isinstance(x, (int, float)) else DateParser.parse(x),
 )
 """匹配时间的表达式"""
 
 
-StrPath = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=Path, alias="path", accepts=[str])
+StrPath = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=Path, alias="path", accepts=str)
+
 PathFile = BasePattern(
     mode=MatchMode.TYPE_CONVERT,
     origin=bytes,
     alias="file",
-    accepts=[Path],
+    accepts=Path,
     previous=StrPath,
-    converter=lambda _, x: x.read_bytes() if x.exists() and x.is_file() else None,  # type: ignore
+    converter=lambda _, x: x.read_bytes() if x.exists() and x.is_file() else None,
 )

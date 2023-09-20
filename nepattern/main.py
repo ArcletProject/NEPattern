@@ -61,17 +61,17 @@ def _generic_parser(item: GenericAlias, extra: str) -> BasePattern:  # type: ign
         return SequencePattern(tuple, _args)
     if origin in (ABCMuSet, ABCSet, set):
         return SequencePattern(set, _args)
-    return BasePattern(mode=MatchMode.KEEP, origin=origin, alias=f"{repr(item).split('.')[-1]}", accepts=[origin])  # type: ignore
+    return BasePattern(mode=MatchMode.KEEP, origin=origin, alias=f"{repr(item).split('.')[-1]}", accepts=origin)  # type: ignore
 
 
 def _typevar_parser(item: TypeVar):
-    return BasePattern(mode=MatchMode.KEEP, origin=Any, alias=f"{item}"[1:], accepts=[item])  # type: ignore
+    return BasePattern(mode=MatchMode.KEEP, origin=Any, alias=f"{item}"[1:], accepts=item)  # type: ignore
 
 
 def _protocol_parser(item: type):
     if not getattr(item, "_is_runtime_protocol", True):  # pragma: no cover
         item = runtime_checkable(deepcopy(item))  # type: ignore
-    return BasePattern(mode=MatchMode.KEEP, origin=Any, alias=f"{item}", accepts=[item])
+    return BasePattern(mode=MatchMode.KEEP, origin=Any, alias=f"{item}", accepts=item)
 
 
 def parser(item: Any, extra: str = "allow") -> BasePattern:
@@ -93,7 +93,7 @@ def parser(item: Any, extra: str = "allow") -> BasePattern:
             raise TypeError(f"{item} can only accept 1 or 2 argument")
         anno = list(sig.parameters.values())[-1].annotation
         return BasePattern(
-            accepts=[] if anno == inspect.Signature.empty else list(_) if (_ := get_args(anno)) else [anno],
+            accepts=Any if anno == inspect.Signature.empty else anno,
             origin=(Any if sig.return_annotation == inspect.Signature.empty else sig.return_annotation),
             converter=item if len(sig.parameters) == 2 else lambda _, x: item(x),
             mode=MatchMode.TYPE_CONVERT,
@@ -147,8 +147,7 @@ class Bind:
             raise TypeError("Bind[...] second argument should be a callable or str.")
         pattern = deepcopy(pattern)
         pattern.alias = al[0] if (al := [i for i in params[1:] if isinstance(i, str)]) else pattern.alias
-        pattern._repr = pattern.__calc_repr__()
-        pattern._hash = hash(pattern._repr)
+        pattern.refresh()
         pattern.validators.extend(filter(callable, params[1:]))
         return pattern
 
