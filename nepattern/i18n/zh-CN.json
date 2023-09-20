@@ -1,7 +1,8 @@
 {
   "nepattern": {
-    "type_error": "参数 {target} 的类型 {type} 不正确",
-    "content_error": "参数 {target} 不正确",
+    "type_error": "参数 {target} 的类型 {type} 不正确, 其应该是 {expected}",
+    "content_error": "参数 {target} 不正确, 其应该是 {expected}",
+    "validate_error": "{target} 校验失败",
     "sequence_form_error": "不正确的序列形式: {target}",
     "validate_reject": "{target} 校验失败",
     "pattern_head_or_tail_error": "不允许正则表达式 {target} 头尾部分使用 '^' 或 '$' "

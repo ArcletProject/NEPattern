@@ -382,13 +382,13 @@ class BasePattern(Generic[TOrigin]):
         if self.mode == 2:
             res = self.converter(self, input_)
             if res is None and self.origin is Any:  # pragma: no cover
-                raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_))
+                raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
             if not generic_isinstance(res, self.origin):
                 if not self.previous or not generic_isinstance(
                     res := self.converter(self, self.previous.match(input_)),
                     self.origin,
                 ):
-                    raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_))
+                    raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
             if TYPE_CHECKING:
                 assert res is not None
             return res
@@ -402,7 +402,8 @@ class BasePattern(Generic[TOrigin]):
                 return mat[0]  # type: ignore
             if (res := self.converter(self, mat)) is not None:
                 return res
-        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_))
+        raise MatchFailed(
+            lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
 
     @overload
     def validate(self, input_: Any) -> ValidateResult[TOrigin]:
@@ -421,7 +422,7 @@ class BasePattern(Generic[TOrigin]):
         try:
             res = self.match(input_)
             if self.validators and not all(i(res) for i in self.validators):
-                raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_))
+                raise MatchFailed(lang.require("nepattern", "validate_error").format(target=input_))
             return ValidateResult(value=res, flag=ResultFlag.VALID)
         except Exception as e:
             if default is Empty:
@@ -454,7 +455,7 @@ class BasePattern(Generic[TOrigin]):
                     return ValidateResult(value=input_, flag=ResultFlag.VALID)
             if default is Empty:
                 return ValidateResult(
-                    error=MatchFailed(lang.require("nepattern", "content_error").format(target=input_)),
+                    error=MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self._repr)),
                     flag=ResultFlag.ERROR,
                 )
             if TYPE_CHECKING:

@@ -65,5 +65,5 @@ global_patterns().update(
 global_patterns().set(PathFile)
 
 
-global_patterns().sets([STRING, INTEGER, FLOAT, BOOLEAN, LIST, TUPLE, SET, DICT], no_alias=True)
+global_patterns().sets([STRING, INTEGER, FLOAT, BOOLEAN, LIST, TUPLE, SET, DICT])
 global_patterns()["number"] = NUMBER
