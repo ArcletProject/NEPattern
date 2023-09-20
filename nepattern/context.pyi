@@ -1,21 +1,15 @@
 from collections import UserDict
 from typing import Any, Iterable, final
+
 from tarina import Empty
 
 from .core import BasePattern
-
 
 @final
 class Patterns(UserDict[Any, BasePattern]):
     name: str
     def __init__(self, name: str): ...
-    def set(
-        self,
-        target: BasePattern,
-        alias: str | None = None,
-        cover: bool = True,
-        no_alias=False
-    ):
+    def set(self, target: BasePattern, alias: str | None = None, cover: bool = True, no_alias=False):
         """
         增加可使用的类型转换器
 

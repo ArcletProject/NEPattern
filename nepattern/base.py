@@ -1,21 +1,24 @@
 from __future__ import annotations
 
+from datetime import datetime
+from pathlib import Path
 import re
-from typing import Any, Dict, Iterable, Literal, TypeVar, Match
+import sys
+from typing import Any, Dict, ForwardRef, Iterable, Literal, Match, TypeVar, Union
 
-from tarina import Empty
-from tarina.lang import lang
+from tarina import Empty, DateParser, lang
 
-from .core import BasePattern, MatchMode, ValidateResult, ResultFlag
+from .core import BasePattern, MatchMode, ResultFlag, ValidateResult
 from .exception import MatchFailed
 from .util import TPattern
 
 
 class DirectPattern(BasePattern):
     """直接判断"""
+
     def __init__(self, target: Any, alias: str | None = None):
         self.target = target
-        super().__init__(model=MatchMode.TYPE_CONVERT, origin=type(target), alias=alias or str(target))
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=type(target), alias=alias or str(target))
 
     def prefixed(self):
         if isinstance(self.target, str):
@@ -29,34 +32,25 @@ class DirectPattern(BasePattern):
 
     def match(self, input_: Any):
         if input_ != self.target:
-            raise MatchFailed(
-                lang.require("nepattern", "content_error").format(target=input_)
-            )
+            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_))
         return input_
 
-    def validate(self, input_: Any, default: Any = None):
+    def validate(self, input_: Any, default: Any = Empty):
         if input_ == self.target:
             return ValidateResult(input_, flag=ResultFlag.VALID)
-        e = MatchFailed(
-            lang.require("nepattern", "content_error").format(target=input_)
-        )
-        if default is None:
+        e = MatchFailed(lang.require("nepattern", "content_error").format(target=input_))
+        if default is Empty:
             return ValidateResult(error=e, flag=ResultFlag.ERROR)
-        return ValidateResult(
-            value=None if default is Empty else default, flag=ResultFlag.DEFAULT  # type: ignore
-        )
+        return ValidateResult(default, flag=ResultFlag.DEFAULT)
 
-    def invalidate(self, input_: Any, default: Any = None) -> ValidateResult[Any]:
+    def invalidate(self, input_: Any, default: Any = Empty) -> ValidateResult[Any]:
         if input_ == self.target:
-            e = MatchFailed(
-                lang.require("nepattern", "content_error").format(target=input_)
-            )
-            if default is None:
+            e = MatchFailed(lang.require("nepattern", "content_error").format(target=input_))
+            if default is Empty:
                 return ValidateResult(error=e, flag=ResultFlag.ERROR)
-            return ValidateResult(
-                value=None if default is Empty else default, flag=ResultFlag.DEFAULT  # type: ignore
-            )
+            return ValidateResult(default, flag=ResultFlag.DEFAULT)
         return ValidateResult(input_, flag=ResultFlag.VALID)
+
 
 class RegexPattern(BasePattern[Match[str]]):
     """针对正则的特化匹配，支持正则组"""
@@ -69,13 +63,11 @@ class RegexPattern(BasePattern[Match[str]]):
     def match(self, input_: Any) -> Match[str]:
         if not isinstance(input_, str):
             raise MatchFailed(
-                lang.require("nepattern", "type_error").format(target=input_)
+                lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_)
             )
         if mat := self.regex_pattern.match(input_):
             return mat
-        raise MatchFailed(
-            lang.require("nepattern", "content_error").format(target=input_)
-        )
+        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_))
 
 
 class UnionPattern(BasePattern):
@@ -93,17 +85,15 @@ class UnionPattern(BasePattern):
         self.for_equal = []
 
         for arg in self.base:
-            if arg == Empty:
+            if arg == NONE:
                 self.optional = True
                 self.for_equal.append(None)
             elif isinstance(arg, BasePattern):
                 self.for_validate.append(arg)
             else:
                 self.for_equal.append(arg)
-        alias_content = "|".join(
-            [repr(a) for a in self.for_validate] + [repr(a) for a in self.for_equal]
-        )
-        super().__init__(model=MatchMode.KEEP, origin=str, alias=alias_content, anti=anti)
+        alias_content = "|".join([repr(a) for a in self.for_validate] + [repr(a) for a in self.for_equal])
+        super().__init__(mode=MatchMode.KEEP, origin=str, alias=alias_content, anti=anti)
 
     def match(self, text: Any):
         if not text:
@@ -112,37 +102,27 @@ class UnionPattern(BasePattern):
             for pat in self.for_validate:
                 if (res := pat.validate(text)).success:
                     return res.value
-            raise MatchFailed(
-                lang.require("nepattern", "content_error").format(target=text)
-            )
+            raise MatchFailed(lang.require("nepattern", "content_error").format(target=text))
         return text
 
     def __calc_repr__(self):
-        return ("!" if self.anti else "") + (
-            "|".join(repr(a) for a in (*self.for_validate, *self.for_equal))
-        )
+        return ("!" if self.anti else "") + ("|".join(repr(a) for a in (*self.for_validate, *self.for_equal)))
 
     def prefixed(self) -> UnionPattern:
-        from .main import type_parser
+        from .main import parser
 
         return UnionPattern(
             [pat.prefixed() for pat in self.for_validate]
-            + [
-                type_parser(eq).prefixed() if isinstance(eq, str) else eq  # type: ignore
-                for eq in self.for_equal
-            ],
+            + [parser(eq).prefixed() if isinstance(eq, str) else eq for eq in self.for_equal],  # type: ignore
             self.anti,
         )
 
     def suffixed(self) -> UnionPattern:
-        from .main import type_parser
+        from .main import parser
 
         return UnionPattern(
             [pat.suffixed() for pat in self.for_validate]
-            + [
-                type_parser(eq).suffixed() if isinstance(eq, str) else eq  # type: ignore
-                for eq in self.for_equal
-            ],
+            + [parser(eq).suffixed() if isinstance(eq, str) else eq for eq in self.for_equal],  # type: ignore
             self.anti,
         )
 
@@ -160,32 +140,20 @@ class SequencePattern(BasePattern[TSeq]):
         self.base = base
         self._mode = "all"
         if form is list:
-            super().__init__(
-                r"\[(.+?)\]", MatchMode.REGEX_CONVERT, form, alias=f"list[{base}]"
-            )
+            super().__init__(r"\[(.+?)\]", MatchMode.REGEX_CONVERT, form, alias=f"list[{base}]")
         elif form is tuple:
-            super().__init__(
-                r"\((.+?)\)", MatchMode.REGEX_CONVERT, form, alias=f"tuple[{base}]"
-            )
+            super().__init__(r"\((.+?)\)", MatchMode.REGEX_CONVERT, form, alias=f"tuple[{base}]")
         elif form is set:
-            super().__init__(
-                r"\{(.+?)\}", MatchMode.REGEX_CONVERT, form, alias=f"set[{base}]"
-            )
+            super().__init__(r"\{(.+?)\}", MatchMode.REGEX_CONVERT, form, alias=f"set[{base}]")
         else:
-            raise ValueError(
-                lang.require("nepattern", "sequence_form_error").format(
-                    target=str(form)
-                )
-            )
+            raise ValueError(lang.require("nepattern", "sequence_form_error").format(target=str(form)))
 
     def match(self, text: Any):
         _res = super().match(text)
         _max = 0
         success: list[tuple[int, Any]] = []
         fail: list[tuple[int, MatchFailed]] = []
-        for _max, s in enumerate(
-            re.split(r"\s*,\s*", _res) if isinstance(_res, str) else _res
-        ):
+        for _max, s in enumerate(re.split(r"\s*,\s*", _res) if isinstance(_res, str) else _res):
             try:
                 success.append((_max, self.base.match(s)))
             except MatchFailed:
@@ -259,9 +227,7 @@ class MappingPattern(BasePattern[Dict[TKey, TVal]]):
                 fail.append(
                     (
                         _max,
-                        MatchFailed(
-                            f"{k}: {v} is not matched with {self.key}: {self.value}"
-                        ),
+                        MatchFailed(f"{k}: {v} is not matched with {self.key}: {self.value}"),
                     )
                 )
         if (
@@ -296,7 +262,7 @@ class SwitchPattern(BasePattern[_TCase]):
 
     def __init__(self, data: dict[Any | ellipsis, _TCase]):
         self.switch = data
-        super().__init__(model=MatchMode.TYPE_CONVERT, origin=type(list(data.values())[0]))
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=type(list(data.values())[0]))
 
     def __calc_repr__(self):
         return "|".join(f"{k}" for k in self.switch if k != Ellipsis)
@@ -307,16 +273,110 @@ class SwitchPattern(BasePattern[_TCase]):
         except KeyError as e:
             if Ellipsis in self.switch:
                 return self.switch[...]
+            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_)) from e
+
+
+class ForwardRefPattern(BasePattern[Any]):
+    def __init__(self, ref: ForwardRef):
+        self.ref = ref
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Any, alias=ref.__forward_arg__)
+
+    def match(self, input_: Any):
+        if isinstance(input_, str) and input_ == self.ref.__forward_arg__:
+            return input_
+        _main = sys.modules["__main__"]
+        origin = self.ref._evaluate(_main.__dict__, _main.__dict__)
+        if not isinstance(input_, origin):  # type: ignore
             raise MatchFailed(
-                lang.require("nepattern", "content_error").format(target=input_)
-            ) from e
+                lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_)
+            )
+        return input_
 
 
-__all__ = [
-    "DirectPattern",
-    "RegexPattern",
-    "UnionPattern",
-    "SequencePattern",
-    "MappingPattern",
-    "SwitchPattern",
-]
+NONE = BasePattern(mode=MatchMode.KEEP, origin=None, alias="none")  # type: ignore
+
+ANY = BasePattern(mode=MatchMode.KEEP, origin=Any, alias="any")
+"""匹配任意内容的表达式"""
+
+AnyString = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str, alias="any_str")
+"""匹配任意内容并转为字符串的表达式"""
+
+STRING = BasePattern(mode=MatchMode.KEEP, origin=str, alias="str", accepts=[str])
+
+INTEGER = BasePattern(r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int")
+"""整形数表达式，只能接受整数样式的量"""
+
+FLOAT = BasePattern(r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float")
+"""浮点数表达式"""
+
+NUMBER = BasePattern(
+    r"(\-?\d+(?P<float>\.\d*)?)",
+    MatchMode.REGEX_CONVERT,
+    Union[int, float],
+    lambda _, x: float(x[1]) if x["float"] else int(x[1]),
+    "number",
+)
+"""一般数表达式，既可以浮点数也可以整数"""
+
+BOOLEAN = BasePattern(
+    r"(?i:True|False)",
+    MatchMode.REGEX_CONVERT,
+    bool,
+    lambda _, x: x[0].lower() == "true",
+    "bool",
+)
+LIST = BasePattern(r"(\[.+?\])", MatchMode.REGEX_CONVERT, list, alias="list")
+TUPLE = BasePattern(r"(\(.+?\))", MatchMode.REGEX_CONVERT, tuple, alias="tuple")
+SET = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, set, alias="set")
+DICT = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, dict, alias="dict")
+
+EMAIL = BasePattern(r"(?:[\w\.+-]+)@(?:[\w\.-]+)\.(?:[\w\.-]+)", MatchMode.REGEX_MATCH, alias="email")
+"""匹配邮箱地址的表达式"""
+
+IP = BasePattern(
+    r"(?:(?:[01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}(?:[01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5]):?(?:\d+)?",
+    MatchMode.REGEX_MATCH,
+    alias="ip",
+)
+"""匹配Ip地址的表达式"""
+
+URL = BasePattern(
+    r"(?:\w+://)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(?:\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+(?::[0-9]{1,5})?[-a-zA-Z0-9()@:%_\\\+\.~#?&//=]*",
+    MatchMode.REGEX_MATCH,
+    alias="url",
+)
+"""匹配网页链接的表达式"""
+
+HEX = BasePattern(
+    r"((?:0x)?[0-9a-fA-F]+)",
+    MatchMode.REGEX_CONVERT,
+    int,
+    lambda _, x: int(x[1], 16),
+    "hex",
+)
+"""匹配16进制数的表达式"""
+
+HEX_COLOR = BasePattern(r"(#[0-9a-fA-F]{6})", MatchMode.REGEX_CONVERT, str, lambda _, x: x[1][1:], "color")
+"""匹配16进制颜色代码的表达式"""
+
+
+
+DATETIME = BasePattern(
+    mode=MatchMode.TYPE_CONVERT,
+    origin=datetime,
+    alias="datetime",
+    accepts=[str, int, FLOAT],
+    converter=lambda _, x: datetime.fromtimestamp(x) if isinstance(x, (int, float)) else DateParser.parse(x),
+)
+"""匹配时间的表达式"""
+
+
+StrPath = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=Path, alias="path", accepts=[str])
+PathFile = BasePattern(
+    mode=MatchMode.TYPE_CONVERT,
+    origin=bytes,
+    alias="file",
+    accepts=[Path],
+    previous=StrPath,
+    converter=lambda _, x: x.read_bytes() if x.exists() and x.is_file() else None,  # type: ignore
+)

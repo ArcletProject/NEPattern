@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import sys
 import dataclasses
-import sre_compile
-from typing import TYPE_CHECKING, List, Pattern, Union
 from pathlib import Path
+import sre_compile
+import sys
+from typing import TYPE_CHECKING, List, Pattern, Union
+
 from tarina.lang import lang
 
-if sys.version_info >= (3, 10):   # pragma: no cover
+if sys.version_info >= (3, 10):  # pragma: no cover
     from types import GenericAlias as CGenericAlias  # noqa
     from types import UnionType as CUnionType  # noqa
 else:
@@ -20,16 +21,6 @@ else:
     TPattern: type[Pattern[str]] = type(sre_compile.compile("", 0))
 GenericAlias: type = type(List[int])
 UnionType: type = type(Union[int, str])
-
-
-class _All:
-    """泛匹配"""
-
-    def __repr__(self):
-        return "AllParam"
-
-
-AllParam = _All()
 
 
 @dataclasses.dataclass

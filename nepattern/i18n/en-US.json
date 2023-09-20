@@ -1,6 +1,6 @@
 {
   "nepattern": {
-    "type_error": "type of parameter {target} is incorrect",
+    "type_error": "type {type} of parameter {target} is incorrect",
     "content_error": "parameter {target} is incorrect",
     "sequence_form_error": "incorrect sequence form: {target}",
     "validate_reject": "validate {target} failed",

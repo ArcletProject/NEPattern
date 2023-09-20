@@ -3,17 +3,17 @@ from __future__ import annotations
 from collections import UserDict
 from contextvars import ContextVar, Token
 from typing import final
+
 from tarina import Empty
 
 from .base import UnionPattern
-from .util import AllParam
 
 
 @final
 class Patterns(UserDict):
     def __init__(self, name):
         self.name = name
-        super().__init__({"": Empty, "*": AllParam})
+        super().__init__({"": Empty})
 
     def set(self, target, alias=None, cover=True, no_alias=False):
         """
