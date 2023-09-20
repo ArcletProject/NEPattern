@@ -44,8 +44,6 @@ def _generic_parser(item: GenericAlias, extra: str) -> BasePattern:  # type: ign
         _arg.alias = al[-1] if (al := [i for i in meta if isinstance(i, str)]) else _arg.alias
         _arg.validators.extend(i for i in meta if callable(i))
         return _arg
-    if origin is ForwardRef:
-        return ForwardRefPattern(item)
     if origin in _Contents:
         _args = {parser(t, extra) for t in get_args(item)}
         return (_args.pop() if len(_args) == 1 else UnionPattern(_args)) if _args else ANY
@@ -119,6 +117,8 @@ def parser(item: Any, extra: str = "allow") -> BasePattern:
         return UnionPattern(map(lambda x: parser(x) if inspect.isclass(x) else x, item))
     if isinstance(item, (dict, ABCMap, ABCMuMap)):
         return SwitchPattern(dict(item))
+    if isinstance(item, ForwardRef):
+        return ForwardRefPattern(item)
     if item is None or type(None) == item:
         return NONE
     if extra == "ignore":

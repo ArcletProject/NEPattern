@@ -504,6 +504,14 @@ def test_direct():
     assert pat20_2.invalidate(456, 123).value == 123
 
 
+def test_forward_red():
+    from typing import ForwardRef
+
+    pat21 = parser(ForwardRef("int"))
+    assert pat21.validate(123).value == 123
+    assert pat21.validate("int").value == "int"
+    assert pat21.validate(134.5).failed
+
 if __name__ == "__main__":
     import pytest
 
