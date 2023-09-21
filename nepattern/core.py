@@ -327,7 +327,9 @@ class BasePattern(Generic[TOrigin, TInput]):
     @staticmethod
     def of(unit: type[TOrigin]):
         """提供 Type[DataUnit] 类型的构造方法"""
-        return BasePattern(mode=MatchMode.KEEP, origin=unit, alias=unit.__name__, accepts=unit)
+        from .base import DirectTypePattern
+
+        return DirectTypePattern(unit)
 
     @staticmethod
     def on(obj: TOrigin):

@@ -6,7 +6,7 @@ from typing import Any, Callable, Generic, Literal, TypeVar, overload
 from typing_extensions import Self, NoReturn
 
 from tarina import Empty
-from .base import DirectPattern
+from .base import DirectPattern, DirectTypePattern
 from .util import TPattern
 
 class MatchMode(IntEnum):
@@ -362,7 +362,7 @@ class BasePattern(Generic[TOrigin, TInput]):
     def __hash__(self): ...
     def __eq__(self, other): ...
     @staticmethod
-    def of(unit: type[TOrigin]) -> BasePattern[TOrigin, TOrigin]:
+    def of(unit: type[TOrigin]) -> DirectTypePattern[TOrigin]:
         """提供 Type[DataUnit] 类型的构造方法"""
         ...
     @staticmethod

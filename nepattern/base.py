@@ -23,7 +23,7 @@ class DirectPattern(BasePattern[TOrigin, TOrigin]):
 
     def __init__(self, target: TOrigin, alias: str | None = None):
         self.target = target
-        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=type(target), alias=alias or str(target))
+        super().__init__(mode=MatchMode.KEEP, origin=type(target), alias=alias or str(target))
 
     def prefixed(self):
         if isinstance(self.target, str):
@@ -63,6 +63,47 @@ class DirectPattern(BasePattern[TOrigin, TOrigin]):
             return ValidateResult(input_, flag=ResultFlag.VALID)
         e = MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.target)
+        )
+        if default is Empty:
+            return ValidateResult(error=e, flag=ResultFlag.ERROR)
+        return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
+
+
+class DirectTypePattern(BasePattern[TOrigin, TOrigin]):
+    """直接类型判断"""
+
+    def __init__(self, target: type[TOrigin], alias: str | None = None):
+        self.target = target
+        super().__init__(mode=MatchMode.KEEP, origin=target, alias=alias or target.__name__)
+
+    def match(self, input_: Any):
+        if not isinstance(input_, self.target):
+            raise MatchFailed(
+                lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected=self.target)
+            )
+        return input_
+
+    @overload
+    def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
+        ...
+
+    @overload
+    def validate(self, input_: _T) -> ValidateResult[_T, Literal[ResultFlag.ERROR]]:
+        ...
+
+    @overload
+    def validate(self, input_: TOrigin, default: Any) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
+        ...
+
+    @overload
+    def validate(self, input_: Any, default: TDefault) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
+        ...
+
+    def validate(self, input_: Any, default: Union[TDefault, Empty] = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
+        if isinstance(input_, self.target):
+            return ValidateResult(input_, flag=ResultFlag.VALID)
+        e = MatchFailed(
+            lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected=self.target)
         )
         if default is Empty:
             return ValidateResult(error=e, flag=ResultFlag.ERROR)
@@ -267,11 +308,11 @@ class MappingPattern(BasePattern[Dict[TKey, TVal], Union[str, Dict[TKey, TVal]]]
 
     def prefixed(self) -> MappingPattern:
         self._mode = "pre"
-        return super(MappingPattern, self).prefixed()
+        return super().prefixed()  # type: ignore
 
     def suffixed(self) -> MappingPattern:
         self._mode = "suf"
-        return super(MappingPattern, self).suffixed()
+        return super().suffixed()  # type: ignore
 
 
 _TCase = TypeVar("_TCase")
@@ -389,28 +430,132 @@ def _string(_, x: str) -> str:
 
 STRING = CustomMatchPattern(str, _string, "str")
 
-INTEGER = BasePattern(r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int")
+class IntPattern(BasePattern[int, Union[str, int]]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=int, alias="int")
+
+    def match(self, input_: Union[str, int]) -> int:
+        if isinstance(input_, int):
+            return input_
+        if not isinstance(input_, str):
+            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="int | str"))
+        if input_[0] == "-":
+            if input_[1:].isdigit():
+                return -int(input_[1:])
+        elif input_.isdigit():
+            return int(input_)
+        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="int"))
+
+    def prefixed(self):
+        return BasePattern(r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int").prefixed()
+
+    def suffixed(self):
+        return BasePattern(r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int").suffixed()
+
+
+INTEGER = IntPattern()
 """整形数表达式，只能接受整数样式的量"""
 
-FLOAT = BasePattern(r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float")
+class FloatPattern(BasePattern[float, Union[str, int,  float]]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=float, alias="float")
+
+    def match(self, input_: Union[str, float]) -> float:
+        if isinstance(input_, float):
+            return input_
+        if isinstance(input_, int):
+            return float(input_)
+        if not isinstance(input_, str):
+            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | int | float"))
+        sig = 1
+        if input_[0] == "-":
+            sig = -1
+            input_ = input_[1:]
+        dot = input_.find(".")
+        if dot == -1:
+            if input_.isdigit():
+                return float(input_) * sig
+        elif input_[:dot].isdigit() and input_[dot + 1:].isdigit():
+            return float(input_) * sig
+        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="float"))
+
+    def prefixed(self):
+        return BasePattern(r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float").prefixed()
+
+    def suffixed(self):
+        return BasePattern(r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float").suffixed()
+
+FLOAT = FloatPattern()
 """浮点数表达式"""
 
-NUMBER = BasePattern(
-    r"(\-?\d+(?P<float>\.\d*)?)",
-    MatchMode.REGEX_CONVERT,
-    Union[int, float],
-    lambda _, x: float(x[1]) if x["float"] else int(x[1]),
-    "number",
-)
-"""一般数表达式，既可以浮点数也可以整数"""
+class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Union[int, float], alias="float")
 
-BOOLEAN = BasePattern(
-    r"(?i:True|False)",
-    MatchMode.REGEX_CONVERT,
-    bool,
-    lambda _, x: x[0].lower() == "true",
-    "bool",
-)
+    def match(self, input_: Union[str, float]) -> float:
+        if isinstance(input_, (float, int)):
+            return input_
+        if not isinstance(input_, str):
+            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | int | float"))
+        sig = 1
+        if input_[0] == "-":
+            sig = -1
+            input_ = input_[1:]
+        dot = input_.find(".")
+        if dot == -1:
+            if input_.isdigit():
+                return int(input_) * sig
+        elif input_[:dot].isdigit() and input_[dot + 1:].isdigit():
+            return float(input_) * sig
+        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="int | float"))
+
+    def prefixed(self):
+
+        return BasePattern(
+            r"(\-?\d+(?P<float>\.\d*)?)",
+            MatchMode.REGEX_CONVERT,
+            Union[int, float],
+            lambda _, x: float(x[1]) if x["float"] else int(x[1]),
+            "number",
+        ).prefixed()
+
+    def suffixed(self):
+        return BasePattern(
+            r"(\-?\d+(?P<float>\.\d*)?)",
+            MatchMode.REGEX_CONVERT,
+            Union[int, float],
+            lambda _, x: float(x[1]) if x["float"] else int(x[1]),
+            "number",
+        ).suffixed()
+
+NUMBER = NumberPattern()
+"""一般数表达式，既可以浮点数也可以整数 """
+
+
+class BoolPattern(BasePattern[bool, Union[str, bool]]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=bool, alias="bool")
+
+    def match(self, input_: Union[str, bool]) -> bool:
+        if isinstance(input_, bool):
+            return input_
+        if not isinstance(input_, str):
+            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | bool"))
+        if input_.lower() == "true":
+            return True
+        if input_.lower() == "false":
+            return False
+        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="bool"))
+
+    def prefixed(self):
+        return BasePattern(r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool").prefixed()
+
+    def suffixed(self):
+        return BasePattern(r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool").suffixed()
+
+BOOLEAN = BoolPattern()
+"""布尔表达式，只能接受true或false样式的量"""
+
 LIST = BasePattern(r"(\[.+?\])", MatchMode.REGEX_CONVERT, list, alias="list")
 TUPLE = BasePattern(r"(\(.+?\))", MatchMode.REGEX_CONVERT, tuple, alias="tuple")
 SET = BasePattern(r"(\{.+?\})", MatchMode.REGEX_CONVERT, set, alias="set")
@@ -445,14 +590,18 @@ HEX = BasePattern(
 HEX_COLOR = BasePattern(r"(#[0-9a-fA-F]{6})", MatchMode.REGEX_CONVERT, str, lambda _, x: x[1][1:], "color")
 """匹配16进制颜色代码的表达式"""
 
+class DateTimePattern(BasePattern[datetime, Union[str, int, float]]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=datetime, alias="datetime", accepts=Union[str, int, float])
 
-DATETIME = BasePattern(
-    mode=MatchMode.TYPE_CONVERT,
-    origin=datetime,
-    alias="datetime",
-    accepts=Union[str, int, float],
-    converter=lambda _, x: datetime.fromtimestamp(x) if isinstance(x, (int, float)) else DateParser.parse(x),
-)
+    def match(self, input_: Union[str, int, float]) -> datetime:
+        if isinstance(input_, (int, float)):
+            return datetime.fromtimestamp(input_)
+        if not isinstance(input_, str):
+            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | int | float"))
+        return DateParser.parse(input_)
+
+DATETIME = DateTimePattern()
 """匹配时间的表达式"""
 
 

@@ -12,7 +12,7 @@ from functools import lru_cache
 import inspect
 from types import FunctionType, LambdaType, MethodType
 from typing import Any, ForwardRef, Literal, TypeVar, Union, runtime_checkable, overload, Callable, Iterable
-from typing_extensions import Annotated, get_args, get_origin, TypeVarTuple, Unpack
+from typing_extensions import Annotated, get_args, get_origin
 
 from tarina.lang import lang
 
@@ -20,6 +20,7 @@ from .base import (
     ANY,
     NONE,
     DirectPattern,
+    DirectTypePattern,
     ForwardRefPattern,
     MappingPattern,
     RegexPattern,
@@ -76,14 +77,13 @@ def _protocol_parser(item: type):
 
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
-Ts = TypeVarTuple("Ts")
 
 @overload
-def parser(item: str, extra: str = "allow") -> BasePattern | DirectPattern | RegexPattern | UnionPattern:
+def parser(item: str, extra: str = "allow") -> BasePattern[str, str] | DirectPattern[str] | RegexPattern | UnionPattern:
     ...
 
 @overload
-def parser(item: RawStr, extra: str = "allow") -> DirectPattern:
+def parser(item: RawStr, extra: str = "allow") -> DirectPattern[str]:
     ...
 
 @overload
@@ -107,7 +107,7 @@ def parser(item: type[ABCSet[T1]], extra: str = "allow") -> SequencePattern[set[
     ...
 
 @overload
-def parser(item: type[T1], extra: str = "allow") -> BasePattern[T1, Any]:
+def parser(item: type[T1], extra: str = "allow") -> BasePattern[T1, Any] | DirectTypePattern[T1]:
     ...
 
 @overload
