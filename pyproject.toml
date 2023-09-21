@@ -7,7 +7,7 @@ authors = [
 ]
 dependencies = [
     "typing-extensions>=4.5.0",
-    "tarina>=0.4.0",
+    "tarina>=0.4.1",
 ]
 requires-python = ">=3.8"
 readme = "README.md"

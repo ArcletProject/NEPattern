@@ -137,7 +137,7 @@ def _regex_match(self: BasePattern[str, str], input_: Any) -> str:
 
 
 def _regex_convert(self: BasePattern[TOrigin, str | TOrigin], input_: Any) -> TOrigin:
-    if self.origin not in (str, Any) and generic_isinstance(input_, self.origin):
+    if self.origin is not Any and self.origin is not str and generic_isinstance(input_, self.origin):
         return input_  # type: ignore
     if not isinstance(input_, str) and (
         not self.previous or not isinstance(input_ := self.previous.match(input_), str)
@@ -258,14 +258,19 @@ class BasePattern(Generic[TOrigin, TInput]):
             lambda _, x: (get_origin(origin) or origin)(x) if mode == MatchMode.TYPE_CONVERT else eval(x[0])
         )
         self.validators = validators or []
-        self._accepts = () if accepts in (Any, None) else (get_args(accepts) or (accepts,))
+        if accepts is Any or not accepts:
+            _accepts = Any
+            self._accepts = ()
+        else:
+            _accepts = get_origin(accepts) or accepts
+            self._accepts = get_args(accepts) or (accepts, )
         self._pattern_accepts = addition_accepts
         self._repr = self.__calc_repr__()
         self._hash = hash(self._repr)
 
         if not addition_accepts:
-            self.accept = lambda _: generic_isinstance(_, self._accepts) if self._accepts else True
-        elif accepts in (Any, None):
+            self.accept = (lambda x: True) if _accepts is Any else (lambda _: generic_isinstance(_, _accepts))
+        elif _accepts is Any:
             self.accept = lambda _: addition_accepts.validate(_).flag == "valid"
         else:
             self.accept = lambda _: (

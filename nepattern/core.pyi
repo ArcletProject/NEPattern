@@ -107,7 +107,7 @@ class BasePattern(Generic[TOrigin, TInput]):
     match: Callable[[TInput], TOrigin]
     _repr: str
     _hash: int
-    _accepts: tuple[type[Any], ...]
+    _accepts: type[Any] | tuple[type[Any], ...]
     _pattern_accepts: BasePattern | None
 
     @overload
