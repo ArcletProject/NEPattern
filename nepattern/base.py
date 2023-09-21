@@ -168,7 +168,7 @@ class SequencePattern(BasePattern[TSeq, Union[str, TSeq]]):
             raise ValueError(lang.require("nepattern", "sequence_form_error").format(target=str(form)))
 
     def match(self, text: Any):
-        _res = self._MATCHES[MatchMode.REGEX_CONVERT](self, text)
+        _res = self._MATCHES[MatchMode.REGEX_CONVERT](self, text)  # type: ignore
         _max = 0
         success: list[tuple[int, Any]] = []
         fail: list[tuple[int, MatchFailed]] = []
@@ -226,7 +226,7 @@ class MappingPattern(BasePattern[Dict[TKey, TVal], Union[str, Dict[TKey, TVal]]]
         self.converter = lambda _, x: x[1]
 
     def match(self, text: Any):
-        _res = self._MATCHES[MatchMode.REGEX_CONVERT](self, text)
+        _res = self._MATCHES[MatchMode.REGEX_CONVERT](self, text)  # type: ignore
         success: list[tuple[int, Any, Any]] = []
         fail: list[tuple[int, MatchFailed]] = []
         _max = 0

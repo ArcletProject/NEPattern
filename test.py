@@ -180,7 +180,6 @@ def test_pattern_validator():
     )
     assert pat9.validate(23).value() == 23
     assert pat9.validate(-23).failed
-    pat9_1 = BasePattern.to(set_unit(int, lambda x: x != 0))
     print(pat9)
 
 

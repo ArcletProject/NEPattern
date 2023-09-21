@@ -38,7 +38,6 @@ from .context import switch_local_patterns as switch_local_patterns
 from .core import BasePattern as BasePattern
 from .core import MatchMode as MatchMode
 from .core import ValidateResult as ValidateResult
-from .core import set_unit as set_unit
 from .exception import MatchFailed as MatchFailed
 from .main import Bind as Bind
 from .main import parser as parser
