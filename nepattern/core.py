@@ -165,7 +165,7 @@ def _type_convert(self: BasePattern[TOrigin, Any], input_: Any) -> TOrigin:
             )
         )
     res = self.converter(self, input_)
-    if res is None and self.origin is Any:
+    if res is None and self.origin is Any:  # pragma: no cover
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
         )
@@ -189,14 +189,14 @@ def _value_operate(self: BasePattern[TOrigin, TOrigin], input_: Any) -> TOrigin:
             )
         )
     res = self.converter(self, input_)
-    if res is None and self.origin is Any:
+    if res is None and self.origin is Any:  # pragma: no cover
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
         )
     if not generic_isinstance(res, self.origin) and (
         not self.previous
         or not generic_isinstance(res := self.converter(self, self.previous.match(input_)), self.origin)
-    ):
+    ):  # pragma: no cover
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
         )

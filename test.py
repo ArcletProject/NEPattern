@@ -506,6 +506,36 @@ def test_forward_red():
     assert pat21.validate("int").value() == "int"
     assert pat21.validate(134.5).failed
 
+
+def test_value_operate():
+    pat22 = BasePattern(
+        mode=MatchMode.VALUE_OPERATE,
+        origin=int,
+        converter=lambda _, x: x + 1,
+    )
+    assert pat22.validate(123).value() == 124
+    assert pat22.validate("123").failed
+    assert pat22.validate(123.0).failed
+
+    pat22_1p = BasePattern(
+        mode=MatchMode.TYPE_CONVERT,
+        origin=int,
+        accepts=Union[str, float],
+        converter=lambda _, x: int(x),
+    )
+
+    pat22_1 = BasePattern(
+        mode=MatchMode.VALUE_OPERATE,
+        origin=int,
+        converter=lambda _, x: x + 1,
+        previous=pat22_1p,
+    )
+    assert pat22_1.validate(123).value() == 124
+    assert pat22_1.validate("123").value() == 124
+    assert pat22_1.validate(123.0).value() == 124
+    assert pat22_1.validate("123.0").failed
+    assert pat22_1.validate([]).failed
+
 if __name__ == "__main__":
     import pytest
 
