@@ -165,11 +165,8 @@ def _type_convert(self: BasePattern[TOrigin, Any], input_: Any) -> TOrigin:
             )
         )
     res = self.converter(self, input_)
-    if res is None and self.origin is Any:  # pragma: no cover
-        raise MatchFailed(
-            lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
-        )
-    if not generic_isinstance(res, self.origin) and (
+
+    if res is None and (
         not self.previous
         or not generic_isinstance(res := self.converter(self, self.previous.match(input_)), self.origin)
     ):
@@ -262,7 +259,7 @@ class BasePattern(Generic[TOrigin, TInput]):
             _accepts = Any
             self._accepts = ()
         else:
-            _accepts = get_origin(accepts) or accepts
+            _accepts = get_args(accepts) or accepts
             self._accepts = get_args(accepts) or (accepts, )
         self._pattern_accepts = addition_accepts
         self._repr = self.__calc_repr__()
@@ -274,7 +271,7 @@ class BasePattern(Generic[TOrigin, TInput]):
             self.accept = lambda _: addition_accepts.validate(_).flag == "valid"
         else:
             self.accept = lambda _: (
-                generic_isinstance(_, self._accepts) or addition_accepts.validate(_).flag == "valid"
+                generic_isinstance(_, _accepts) or addition_accepts.validate(_).flag == "valid"
             )
         if not hasattr(self, "match"):
             self.match = self._MATCHES[self.mode].__get__(self)  # type: ignore

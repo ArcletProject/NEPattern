@@ -4,7 +4,8 @@ from datetime import datetime
 from pathlib import Path
 import re
 import sys
-from typing import TYPE_CHECKING, Any, Dict, ForwardRef, Iterable, Literal, Match, TypeVar, Union, cast, overload
+from typing import TYPE_CHECKING, Any, Dict, ForwardRef, Iterable, Literal, Match, TypeVar, Union, cast, overload, \
+    Callable
 
 from tarina import DateParser, Empty, lang
 
@@ -365,6 +366,13 @@ class AntiPattern(BasePattern[TOrigin, Any]):
                 default = cast(TDefault, default)
             return ValidateResult(default, flag=ResultFlag.DEFAULT)
 
+TInput = TypeVar("TInput")
+
+class CustomMatchPattern(BasePattern[TOrigin, TInput]):
+    def __init__(self, origin: type[TOrigin], func: Callable[[BasePattern, TInput], TOrigin | None], alias: str | None = None):
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=origin, alias=alias or func.__name__)
+        self.match = func.__get__(self)  # type: ignore
+
 
 NONE = BasePattern(mode=MatchMode.KEEP, origin=None, alias="none")  # type: ignore
 
@@ -374,7 +382,12 @@ ANY = BasePattern(mode=MatchMode.KEEP, origin=Any, alias="any")
 AnyString = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str, alias="any_str")
 """匹配任意内容并转为字符串的表达式"""
 
-STRING = BasePattern(mode=MatchMode.KEEP, origin=str, alias="str", accepts=str)
+def _string(_, x: str) -> str:
+    if not isinstance(x, str):
+        raise MatchFailed(lang.require("nepattern", "type_error").format(type=x.__class__, target=x, expected="str"))
+    return x
+
+STRING = CustomMatchPattern(str, _string, "str")
 
 INTEGER = BasePattern(r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int")
 """整形数表达式，只能接受整数样式的量"""
