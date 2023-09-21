@@ -14,6 +14,7 @@ from .util import TPattern
 
 TOrigin = TypeVar("TOrigin")
 TDefault = TypeVar("TDefault")
+_T = TypeVar("_T")
 
 
 class DirectPattern(BasePattern[TOrigin, TOrigin]):
@@ -45,15 +46,15 @@ class DirectPattern(BasePattern[TOrigin, TOrigin]):
         ...
 
     @overload
-    def validate(self, input_: Any) -> ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]:
+    def validate(self, input_: _T) -> ValidateResult[_T, Literal[ResultFlag.ERROR]]:
         ...
 
     @overload
-    def validate(self, input_: TOrigin, default: TDefault) -> ValidateResult[TOrigin | TDefault, Literal[ResultFlag.VALID]]:
+    def validate(self, input_: TOrigin, default: Any) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
         ...
 
     @overload
-    def validate(self, input_: Any, default: TDefault) -> ValidateResult[TOrigin | TDefault, Literal[ResultFlag.DEFAULT]]:
+    def validate(self, input_: Any, default: TDefault) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
         ...
 
     def validate(self, input_: Any, default: Union[TDefault, Empty] = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
@@ -89,15 +90,14 @@ class RegexPattern(BasePattern[Match[str], str]):
         )
 
 
-class UnionPattern(BasePattern):
+class UnionPattern(BasePattern[Any, _T]):
     """多类型参数的匹配"""
 
     optional: bool
-    base: list[BasePattern | object | str]
     for_validate: list[BasePattern]
     for_equal: list[str | object]
 
-    def __init__(self, base: Iterable[BasePattern | object | str]):
+    def __init__(self, base: Iterable[_T | BasePattern[Any, _T]]):
         self.base = list(base)
         self.optional = False
         self.for_validate = []
@@ -319,15 +319,13 @@ class ForwardRefPattern(BasePattern[Any, Any]):
             )
         return input_
 
-_T = TypeVar("_T")
-
 class AntiPattern(BasePattern[TOrigin, Any]):
     def __init__(self, pattern: BasePattern[TOrigin, Any]):
-        self.base = pattern
+        self.base: BasePattern[TOrigin, Any] = pattern
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=pattern.origin, alias=f"!{pattern}")
 
     @overload
-    def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]:
+    def validate(self, input_: TOrigin) -> ValidateResult[Any, Literal[ResultFlag.ERROR]]:
         ...
 
     @overload
@@ -335,14 +333,14 @@ class AntiPattern(BasePattern[TOrigin, Any]):
         ...
 
     @overload
-    def validate(self, input_: TOrigin, default: TDefault) -> ValidateResult[TOrigin | TDefault, Literal[ResultFlag.DEFAULT]]:
+    def validate(self, input_: TOrigin, default: TDefault) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
         ...
 
     @overload
-    def validate(self, input_: _T, default: TDefault) -> ValidateResult[_T | TDefault, Literal[ResultFlag.VALID]]:
+    def validate(self, input_: _T, default: Any) -> ValidateResult[_T, Literal[ResultFlag.VALID]]:
         ...
 
-    def validate(self, input_: Any, default: Union[TDefault, Empty] = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
+    def validate(self, input_: _T, default: Union[TDefault, Empty] = Empty) -> ValidateResult[_T | TDefault, ResultFlag]:  # type: ignore
         """
         对传入的值进行反向验证，返回可能的匹配与转化结果。
 

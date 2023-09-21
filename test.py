@@ -121,12 +121,12 @@ def test_pattern_accepts():
     assert pat6_1.validate(123).value() == 123
     assert pat6_1.validate("123").failed
     print(pat6, pat6_1)
-    pat6_2 = BasePattern(mode=MatchMode.KEEP, accepts=bytes, addition_accepts=[NUMBER])
+    pat6_2 = BasePattern(mode=MatchMode.KEEP, accepts=bytes, addition_accepts=NUMBER)
     assert pat6_2.validate(123).value() == 123
     assert pat6_2.validate(123.123).value() == 123.123
     assert pat6_2.validate(b'123').value() == b'123'
     print(pat6_2)
-    pat6_3 = BasePattern(mode=MatchMode.KEEP, addition_accepts=[NUMBER])
+    pat6_3 = BasePattern(mode=MatchMode.KEEP, addition_accepts=NUMBER)
     assert pat6_3.validate(123).value() == 123
     assert pat6_3.validate(123.123).value() == 123.123
     assert pat6_3.validate(b'123').failed
@@ -211,14 +211,18 @@ def test_parser():
     assert isinstance(parser("re:a|b|c"), BasePattern)
     assert parser([1, 2, 3]).validate(1).success
     assert parser({"a": 1, "b": 2}).validate('a').value() == 1
-    assert parser(lambda x: x + 1).validate(1).value() == 2
+
+    def _func(x: int):
+        return x + 1
+
+    assert parser(_func).validate(1).value() == 2
 
     def my_func(x: int) -> str:
         return str(x)
 
     pat11_3 = parser(my_func)
     assert pat11_3.origin == str
-    assert pat11_3.type_accepts == (int, )
+    assert pat11_3._accepts == (int, )
 
     assert parser(complex, extra='ignore') == ANY
 
