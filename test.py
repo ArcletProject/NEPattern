@@ -42,7 +42,7 @@ def test_basic():
     assert DATETIME.validate("2020-01-01").value() == datetime(2020, 1, 1)
     assert DATETIME.validate("2020-01-01-12:00:00").value() == datetime(2020, 1, 1, 12, 0, 0)
     assert DATETIME.validate("2020-01-01-12:00:00.123").value() == datetime(2020, 1, 1, 12, 0, 0, 123000)
-    assert DATETIME.validate(1639411200).value() == datetime(2021, 12, 14, 0, 0, 0)
+    assert DATETIME.validate(datetime(2021, 12, 14).timestamp()).value() == datetime(2021, 12, 14, 0, 0, 0)
     assert DATETIME.validate([]).failed
 
 

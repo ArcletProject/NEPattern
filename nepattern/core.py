@@ -95,9 +95,10 @@ class ValidateResult(Generic[TVOrigin, TVRF]):
             return other(self.value())  # type: ignore
         return other.validate(self.value()) if isinstance(other, BasePattern) else self  # type: ignore
 
-    def __rshift__(self, other: type[T] | Callable[[TVOrigin], T] | Any) -> T | Self | ValidateResult[T, TVRF]:
+    def __rshift__(
+        self, other: type[T] | Callable[[TVOrigin], T] | Any
+    ) -> T | Self | ValidateResult[T, TVRF]:
         return self.step(other)  # type: ignore
-
 
     def __bool__(self):
         return self.success
@@ -260,7 +261,7 @@ class BasePattern(Generic[TOrigin, TInput]):
             self._accepts = ()
         else:
             _accepts = get_args(accepts) or accepts
-            self._accepts = get_args(accepts) or (accepts, )
+            self._accepts = get_args(accepts) or (accepts,)
         self._pattern_accepts = addition_accepts
         self._repr = self.__calc_repr__()
         self._hash = hash(self._repr)
@@ -287,9 +288,7 @@ class BasePattern(Generic[TOrigin, TInput]):
             return (
                 "Any"
                 if not self._accepts and not self._pattern_accepts
-                else "|".join(
-                    [x.__name__ for x in self._accepts] + [self._pattern_accepts.__repr__()]
-                )
+                else "|".join([x.__name__ for x in self._accepts] + [self._pattern_accepts.__repr__()])
             )
 
         if not self.alias:
@@ -300,9 +299,7 @@ class BasePattern(Generic[TOrigin, TInput]):
                 text = name
             else:
                 text = (
-                    "|".join(
-                        [x.__name__ for x in self._accepts] + [self._pattern_accepts.__repr__()]
-                    )
+                    "|".join([x.__name__ for x in self._accepts] + [self._pattern_accepts.__repr__()])
                     + f" -> {name}"
                 )
         else:
@@ -360,7 +357,6 @@ class BasePattern(Generic[TOrigin, TInput]):
             cp_self.regex_pattern = re.compile(f"{self.pattern}$")
         return cp_self
 
-
     def validate(self, input_: Any, default: TDefault | Empty = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
         """
         对传入的值进行正向验证，返回可能的匹配与转化结果。
@@ -389,5 +385,6 @@ class BasePattern(Generic[TOrigin, TInput]):
         if isinstance(other, str):
             self.alias = other
         return self
+
 
 __all__ = ["MatchMode", "BasePattern", "ValidateResult", "TOrigin", "ResultFlag"]

@@ -3,9 +3,10 @@ from __future__ import annotations
 from enum import Enum, IntEnum
 import re
 from typing import Any, Callable, Generic, Literal, TypeVar, overload
-from typing_extensions import Self, NoReturn
+from typing_extensions import NoReturn, Self
 
 from tarina import Empty
+
 from .base import DirectPattern, DirectTypePattern
 from .util import TPattern
 
@@ -45,6 +46,7 @@ TVRF = TypeVar("TVRF", bound=ResultFlag)
 
 class ValidateResult(Generic[TVOrigin, TVRF]):
     """参数表达式验证结果"""
+
     flag: TVRF
     _value: TVOrigin | type[Empty]
     _error: Exception | type[Empty]

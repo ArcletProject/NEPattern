@@ -4,8 +4,20 @@ from datetime import datetime
 from pathlib import Path
 import re
 import sys
-from typing import TYPE_CHECKING, Any, Dict, ForwardRef, Iterable, Literal, Match, TypeVar, Union, cast, overload, \
-    Callable
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    ForwardRef,
+    Iterable,
+    Literal,
+    Match,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from tarina import DateParser, Empty, lang
 
@@ -41,7 +53,7 @@ class DirectPattern(BasePattern[TOrigin, TOrigin]):
                 lang.require("nepattern", "content_error").format(target=input_, expected=self.target)
             )
         return input_
-    
+
     @overload
     def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
         ...
@@ -55,7 +67,9 @@ class DirectPattern(BasePattern[TOrigin, TOrigin]):
         ...
 
     @overload
-    def validate(self, input_: Any, default: TDefault) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
+    def validate(
+        self, input_: Any, default: TDefault
+    ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
         ...
 
     def validate(self, input_: Any, default: Union[TDefault, Empty] = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
@@ -79,7 +93,9 @@ class DirectTypePattern(BasePattern[TOrigin, TOrigin]):
     def match(self, input_: Any):
         if not isinstance(input_, self.target):
             raise MatchFailed(
-                lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected=self.target)
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected=self.target
+                )
             )
         return input_
 
@@ -96,14 +112,18 @@ class DirectTypePattern(BasePattern[TOrigin, TOrigin]):
         ...
 
     @overload
-    def validate(self, input_: Any, default: TDefault) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
+    def validate(
+        self, input_: Any, default: TDefault
+    ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
         ...
 
     def validate(self, input_: Any, default: Union[TDefault, Empty] = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
         if isinstance(input_, self.target):
             return ValidateResult(input_, flag=ResultFlag.VALID)
         e = MatchFailed(
-            lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected=self.target)
+            lang.require("nepattern", "type_error").format(
+                type=input_.__class__, target=input_, expected=self.target
+            )
         )
         if default is Empty:
             return ValidateResult(error=e, flag=ResultFlag.ERROR)
@@ -361,6 +381,7 @@ class ForwardRefPattern(BasePattern[Any, Any]):
             )
         return input_
 
+
 class AntiPattern(BasePattern[TOrigin, Any]):
     def __init__(self, pattern: BasePattern[TOrigin, Any]):
         self.base: BasePattern[TOrigin, Any] = pattern
@@ -375,7 +396,9 @@ class AntiPattern(BasePattern[TOrigin, Any]):
         ...
 
     @overload
-    def validate(self, input_: TOrigin, default: TDefault) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
+    def validate(
+        self, input_: TOrigin, default: TDefault
+    ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
         ...
 
     @overload
@@ -407,10 +430,17 @@ class AntiPattern(BasePattern[TOrigin, Any]):
                 default = cast(TDefault, default)
             return ValidateResult(default, flag=ResultFlag.DEFAULT)
 
+
 TInput = TypeVar("TInput")
 
+
 class CustomMatchPattern(BasePattern[TOrigin, TInput]):
-    def __init__(self, origin: type[TOrigin], func: Callable[[BasePattern, TInput], TOrigin | None], alias: str | None = None):
+    def __init__(
+        self,
+        origin: type[TOrigin],
+        func: Callable[[BasePattern, TInput], TOrigin | None],
+        alias: str | None = None,
+    ):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=origin, alias=alias or func.__name__)
         self.match = func.__get__(self)  # type: ignore
 
@@ -423,12 +453,17 @@ ANY = BasePattern(mode=MatchMode.KEEP, origin=Any, alias="any")
 AnyString = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str, alias="any_str")
 """匹配任意内容并转为字符串的表达式"""
 
+
 def _string(_, x: str) -> str:
     if not isinstance(x, str):  # pragma: no cover
-        raise MatchFailed(lang.require("nepattern", "type_error").format(type=x.__class__, target=x, expected="str"))
+        raise MatchFailed(
+            lang.require("nepattern", "type_error").format(type=x.__class__, target=x, expected="str")
+        )
     return x
 
+
 STRING = CustomMatchPattern(str, _string, "str")
+
 
 class IntPattern(BasePattern[int, Union[str, int]]):
     def __init__(self):
@@ -438,23 +473,34 @@ class IntPattern(BasePattern[int, Union[str, int]]):
         if isinstance(input_, int):
             return input_
         if not isinstance(input_, str):
-            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="int | str"))
+            raise MatchFailed(
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected="int | str"
+                )
+            )
         try:
             return int(input_)
         except ValueError as e:
-            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="int")) from e
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_, expected="int")
+            ) from e
 
     def prefixed(self):
-        return BasePattern(r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int").prefixed()
+        return BasePattern(
+            r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int"
+        ).prefixed()
 
     def suffixed(self):
-        return BasePattern(r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int").suffixed()
+        return BasePattern(
+            r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int"
+        ).suffixed()
 
 
 INTEGER = IntPattern()
 """整形数表达式，只能接受整数样式的量"""
 
-class FloatPattern(BasePattern[float, Union[str, int,  float]]):
+
+class FloatPattern(BasePattern[float, Union[str, int, float]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=float, alias="float")
 
@@ -462,20 +508,32 @@ class FloatPattern(BasePattern[float, Union[str, int,  float]]):
         if isinstance(input_, float):
             return input_
         if not isinstance(input_, (str, int)):
-            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | int | float"))
+            raise MatchFailed(
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected="str | int | float"
+                )
+            )
         try:
             return float(input_)
         except ValueError as e:
-            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="float")) from e
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_, expected="float")
+            ) from e
 
     def prefixed(self):  # pragma: no cover
-        return BasePattern(r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float").prefixed()
+        return BasePattern(
+            r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float"
+        ).prefixed()
 
     def suffixed(self):  # pragma: no cover
-        return BasePattern(r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float").suffixed()
+        return BasePattern(
+            r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float"
+        ).suffixed()
+
 
 FLOAT = FloatPattern()
 """浮点数表达式"""
+
 
 class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
     def __init__(self):
@@ -485,15 +543,20 @@ class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
         if isinstance(input_, (float, int)):
             return input_
         if not isinstance(input_, str):
-            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | int | float"))
+            raise MatchFailed(
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected="str | int | float"
+                )
+            )
         try:
             res = float(input_)
             return int(res) if res.is_integer() else res
         except ValueError as e:
-            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="int | float")) from e
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_, expected="int | float")
+            ) from e
 
     def prefixed(self):  # pragma: no cover
-
         return BasePattern(
             r"(\-?\d+(?P<float>\.\d*)?)",
             MatchMode.REGEX_CONVERT,
@@ -511,6 +574,7 @@ class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
             "number",
         ).suffixed()
 
+
 NUMBER = NumberPattern()
 """一般数表达式，既可以浮点数也可以整数 """
 
@@ -525,16 +589,25 @@ class BoolPattern(BasePattern[bool, Union[str, bool]]):
         if isinstance(input_, bool):
             return input_
         if not isinstance(input_, str):
-            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | bool"))
+            raise MatchFailed(
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected="str | bool"
+                )
+            )
         if input_ in self._BOOL:
             return self._BOOL[input_]
         raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="bool"))
 
     def prefixed(self):  # pragma: no cover
-        return BasePattern(r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool").prefixed()
+        return BasePattern(
+            r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool"
+        ).prefixed()
 
     def suffixed(self):  # pragma: no cover
-        return BasePattern(r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool").suffixed()
+        return BasePattern(
+            r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool"
+        ).suffixed()
+
 
 BOOLEAN = BoolPattern()
 """布尔表达式，只能接受true或false样式的量"""
@@ -561,23 +634,35 @@ URL = BasePattern(
 )
 """匹配网页链接的表达式"""
 
+
 class HexPattern(BasePattern[int, str]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=int, alias="hex", accepts=str)
 
     def match(self, input_: str) -> int:
         if not isinstance(input_, str):
-            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str"))
+            raise MatchFailed(
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected="str"
+                )
+            )
         try:
             return int(input_, 16)
         except ValueError as e:
-            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="hex")) from e
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_, expected="hex")
+            ) from e
 
     def prefixed(self):  # pragma: no cover
-        return BasePattern(r"((?:0x)?[0-9a-fA-F]+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1], 16), "hex").prefixed()
+        return BasePattern(
+            r"((?:0x)?[0-9a-fA-F]+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1], 16), "hex"
+        ).prefixed()
 
     def suffixed(self):  # pragma: no cover
-        return BasePattern(r"((?:0x)?[0-9a-fA-F]+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1], 16), "hex").suffixed()
+        return BasePattern(
+            r"((?:0x)?[0-9a-fA-F]+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1], 16), "hex"
+        ).suffixed()
+
 
 HEX = HexPattern()
 """匹配16进制数的表达式"""
@@ -585,16 +670,24 @@ HEX = HexPattern()
 HEX_COLOR = BasePattern(r"(#[0-9a-fA-F]{6})", MatchMode.REGEX_CONVERT, str, lambda _, x: x[1][1:], "color")
 """匹配16进制颜色代码的表达式"""
 
+
 class DateTimePattern(BasePattern[datetime, Union[str, int, float]]):
     def __init__(self):
-        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=datetime, alias="datetime", accepts=Union[str, int, float])
+        super().__init__(
+            mode=MatchMode.TYPE_CONVERT, origin=datetime, alias="datetime", accepts=Union[str, int, float]
+        )
 
     def match(self, input_: Union[str, int, float]) -> datetime:
         if isinstance(input_, (int, float)):
             return datetime.fromtimestamp(input_)
         if not isinstance(input_, str):
-            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | int | float"))
+            raise MatchFailed(
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected="str | int | float"
+                )
+            )
         return DateParser.parse(input_)
+
 
 DATETIME = DateTimePattern()
 """匹配时间的表达式"""

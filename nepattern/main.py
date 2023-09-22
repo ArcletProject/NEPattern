@@ -11,7 +11,7 @@ from copy import deepcopy
 from functools import lru_cache
 import inspect
 from types import FunctionType, LambdaType, MethodType
-from typing import Any, ForwardRef, Literal, TypeVar, Union, runtime_checkable, overload, Callable, Iterable
+from typing import Any, Callable, ForwardRef, Iterable, Literal, TypeVar, Union, overload, runtime_checkable
 from typing_extensions import Annotated, get_args, get_origin
 
 from tarina.lang import lang
@@ -78,37 +78,48 @@ def _protocol_parser(item: type):
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 
+
 @overload
-def parser(item: str, extra: str = "allow") -> BasePattern[str, str] | DirectPattern[str] | RegexPattern | UnionPattern:
+def parser(
+    item: str, extra: str = "allow"
+) -> BasePattern[str, str] | DirectPattern[str] | RegexPattern | UnionPattern:
     ...
+
 
 @overload
 def parser(item: RawStr, extra: str = "allow") -> DirectPattern[str]:
     ...
 
+
 @overload
 def parser(item: TPattern, extra: str = "allow") -> RegexPattern:
     ...
+
 
 @overload
 def parser(item: type[ABCMap[T1, T2]], extra: str = "allow") -> MappingPattern[T1, T2]:
     ...
 
+
 @overload
 def parser(item: type[ABCMuSeq[T1]], extra: str = "allow") -> SequencePattern[list[T1]]:
     ...
+
 
 @overload
 def parser(item: type[tuple[T1, ...]], extra: str = "allow") -> SequencePattern[tuple[T1, ...]]:
     ...
 
+
 @overload
 def parser(item: type[ABCSet[T1]], extra: str = "allow") -> SequencePattern[set[T1]]:
     ...
 
+
 @overload
 def parser(item: type[T1], extra: str = "allow") -> BasePattern[T1, Any] | DirectTypePattern[T1]:
     ...
+
 
 @overload
 def parser(item: ABCMap[T1, T2], extra: str = "allow") -> SwitchPattern[T2, T1]:
@@ -119,6 +130,7 @@ def parser(item: ABCMap[T1, T2], extra: str = "allow") -> SwitchPattern[T2, T1]:
 def parser(item: Iterable[T1 | type[T1]], extra: str = "allow") -> UnionPattern[T1]:
     ...
 
+
 @overload
 def parser(item: ForwardRef, extra: str = "allow") -> BasePattern[Any, Any]:
     ...
@@ -128,9 +140,11 @@ def parser(item: ForwardRef, extra: str = "allow") -> BasePattern[Any, Any]:
 def parser(item: Callable[[T1], T2], extra: str = "allow") -> BasePattern[T2, T1]:
     ...
 
+
 @overload
 def parser(item: T1, extra: str = "allow") -> BasePattern[T1, T1]:
     ...
+
 
 def parser(item: Any, extra: str = "allow") -> BasePattern:
     """对数类型的检查， 将一般数据类型转为 BasePattern 或者特殊类型"""
