@@ -6,6 +6,45 @@ def test_type():
 
     assert isinstance(re.compile(""), TPattern)  # type: ignore
 
+def test_basic():
+    from datetime import datetime
+
+    assert INTEGER.validate(123).success
+    assert INTEGER.validate("123").value() == 123
+    assert INTEGER.validate(123.456).failed
+    assert INTEGER.validate("123.456").failed
+    assert INTEGER.validate("-123").success
+
+    assert FLOAT.validate(123).value() == 123.0
+    assert FLOAT.validate("123").value() == 123.0
+    assert FLOAT.validate(123.456).value() == 123.456
+    assert FLOAT.validate("123.456").value() == 123.456
+    assert FLOAT.validate("1e10").value() == 1e10
+    assert FLOAT.validate("-123").value() == -123.0
+    assert FLOAT.validate("-123.456").value() == -123.456
+    assert FLOAT.validate("-123.456e-2").value() == -1.23456
+    assert FLOAT.validate("aaa").failed
+    assert FLOAT.validate([]).failed
+
+    assert BOOLEAN.validate(True).value() == True
+    assert BOOLEAN.validate(False).value() == False
+    assert BOOLEAN.validate("True").value() == True
+    assert BOOLEAN.validate("False").value() == False
+    assert BOOLEAN.validate("true").value() == True
+    assert BOOLEAN.validate("false").value() == False
+    assert BOOLEAN.validate("1").failed
+    assert BOOLEAN.validate([]).failed
+
+    assert HEX.validate(123).failed
+    assert HEX.validate("0x123").value() == 0x123
+    assert HEX.validate("0o123").failed
+
+    assert DATETIME.validate("2020-01-01").value() == datetime(2020, 1, 1)
+    assert DATETIME.validate("2020-01-01-12:00:00").value() == datetime(2020, 1, 1, 12, 0, 0)
+    assert DATETIME.validate("2020-01-01-12:00:00.123").value() == datetime(2020, 1, 1, 12, 0, 0, 123000)
+    assert DATETIME.validate(1639411200).value() == datetime(2021, 12, 14, 0, 0, 0)
+    assert DATETIME.validate([]).failed
+
 
 def test_result():
     res = NUMBER.validate(123)
@@ -17,6 +56,7 @@ def test_result():
     assert NUMBER.validate("123").value() == 123
     assert NUMBER.validate(123.456).value() == 123.456
     assert NUMBER.validate("123.456").value() == 123.456
+    assert NUMBER.validate("aaa").failed
     res1 = NUMBER.validate([], -1)
     assert res1.or_default
     assert not res1.failed

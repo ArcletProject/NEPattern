@@ -424,7 +424,7 @@ AnyString = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str, alias="any_str"
 """匹配任意内容并转为字符串的表达式"""
 
 def _string(_, x: str) -> str:
-    if not isinstance(x, str):
+    if not isinstance(x, str):  # pragma: no cover
         raise MatchFailed(lang.require("nepattern", "type_error").format(type=x.__class__, target=x, expected="str"))
     return x
 
@@ -439,12 +439,10 @@ class IntPattern(BasePattern[int, Union[str, int]]):
             return input_
         if not isinstance(input_, str):
             raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="int | str"))
-        if input_[0] == "-":
-            if input_[1:].isdigit():
-                return -int(input_[1:])
-        elif input_.isdigit():
+        try:
             return int(input_)
-        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="int"))
+        except ValueError as e:
+            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="int")) from e
 
     def prefixed(self):
         return BasePattern(r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int").prefixed()
@@ -460,29 +458,20 @@ class FloatPattern(BasePattern[float, Union[str, int,  float]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=float, alias="float")
 
-    def match(self, input_: Union[str, float]) -> float:
+    def match(self, input_: Union[str, float, int]) -> float:
         if isinstance(input_, float):
             return input_
-        if isinstance(input_, int):
-            return float(input_)
-        if not isinstance(input_, str):
+        if not isinstance(input_, (str, int)):
             raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | int | float"))
-        sig = 1
-        if input_[0] == "-":
-            sig = -1
-            input_ = input_[1:]
-        dot = input_.find(".")
-        if dot == -1:
-            if input_.isdigit():
-                return float(input_) * sig
-        elif input_[:dot].isdigit() and input_[dot + 1:].isdigit():
-            return float(input_) * sig
-        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="float"))
+        try:
+            return float(input_)
+        except ValueError as e:
+            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="float")) from e
 
-    def prefixed(self):
+    def prefixed(self):  # pragma: no cover
         return BasePattern(r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float").prefixed()
 
-    def suffixed(self):
+    def suffixed(self):  # pragma: no cover
         return BasePattern(r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float").suffixed()
 
 FLOAT = FloatPattern()
@@ -490,26 +479,20 @@ FLOAT = FloatPattern()
 
 class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
     def __init__(self):
-        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Union[int, float], alias="float")
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Union[int, float], alias="number")
 
     def match(self, input_: Union[str, float]) -> float:
         if isinstance(input_, (float, int)):
             return input_
         if not isinstance(input_, str):
             raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | int | float"))
-        sig = 1
-        if input_[0] == "-":
-            sig = -1
-            input_ = input_[1:]
-        dot = input_.find(".")
-        if dot == -1:
-            if input_.isdigit():
-                return int(input_) * sig
-        elif input_[:dot].isdigit() and input_[dot + 1:].isdigit():
-            return float(input_) * sig
-        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="int | float"))
+        try:
+            res = float(input_)
+            return int(res) if res.is_integer() else res
+        except ValueError as e:
+            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="int | float")) from e
 
-    def prefixed(self):
+    def prefixed(self):  # pragma: no cover
 
         return BasePattern(
             r"(\-?\d+(?P<float>\.\d*)?)",
@@ -519,7 +502,7 @@ class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
             "number",
         ).prefixed()
 
-    def suffixed(self):
+    def suffixed(self):  # pragma: no cover
         return BasePattern(
             r"(\-?\d+(?P<float>\.\d*)?)",
             MatchMode.REGEX_CONVERT,
@@ -536,21 +519,21 @@ class BoolPattern(BasePattern[bool, Union[str, bool]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=bool, alias="bool")
 
+    _BOOL = {"true": True, "false": False, "True": True, "False": False}
+
     def match(self, input_: Union[str, bool]) -> bool:
         if isinstance(input_, bool):
             return input_
         if not isinstance(input_, str):
             raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str | bool"))
-        if input_.lower() == "true":
-            return True
-        if input_.lower() == "false":
-            return False
+        if input_ in self._BOOL:
+            return self._BOOL[input_]
         raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="bool"))
 
-    def prefixed(self):
+    def prefixed(self):  # pragma: no cover
         return BasePattern(r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool").prefixed()
 
-    def suffixed(self):
+    def suffixed(self):  # pragma: no cover
         return BasePattern(r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool").suffixed()
 
 BOOLEAN = BoolPattern()
@@ -578,13 +561,25 @@ URL = BasePattern(
 )
 """匹配网页链接的表达式"""
 
-HEX = BasePattern(
-    r"((?:0x)?[0-9a-fA-F]+)",
-    MatchMode.REGEX_CONVERT,
-    int,
-    lambda _, x: int(x[1], 16),
-    "hex",
-)
+class HexPattern(BasePattern[int, str]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=int, alias="hex", accepts=str)
+
+    def match(self, input_: str) -> int:
+        if not isinstance(input_, str):
+            raise MatchFailed(lang.require("nepattern", "type_error").format(type=input_.__class__, target=input_, expected="str"))
+        try:
+            return int(input_, 16)
+        except ValueError as e:
+            raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="hex")) from e
+
+    def prefixed(self):  # pragma: no cover
+        return BasePattern(r"((?:0x)?[0-9a-fA-F]+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1], 16), "hex").prefixed()
+
+    def suffixed(self):  # pragma: no cover
+        return BasePattern(r"((?:0x)?[0-9a-fA-F]+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1], 16), "hex").suffixed()
+
+HEX = HexPattern()
 """匹配16进制数的表达式"""
 
 HEX_COLOR = BasePattern(r"(#[0-9a-fA-F]{6})", MatchMode.REGEX_CONVERT, str, lambda _, x: x[1][1:], "color")
