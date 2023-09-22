@@ -16,10 +16,12 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    final,
     overload,
 )
 
 from tarina import DateParser, Empty, lang
+from typing_extensions import Self
 
 from .core import BasePattern, MatchMode, ResultFlag, ValidateResult
 from .exception import MatchFailed
@@ -191,7 +193,7 @@ class UnionPattern(BasePattern[Any, _T]):
     def __calc_repr__(self):
         return "|".join(repr(a) for a in (*self.for_validate, *self.for_equal))
 
-    def prefixed(self) -> UnionPattern:
+    def prefixed(self) -> Self:
         from .main import parser
 
         return UnionPattern(
@@ -199,7 +201,7 @@ class UnionPattern(BasePattern[Any, _T]):
             + [parser(eq).prefixed() if isinstance(eq, str) else eq for eq in self.for_equal],  # type: ignore
         )
 
-    def suffixed(self) -> UnionPattern:
+    def suffixed(self) -> Self:
         from .main import parser
 
         return UnionPattern(
@@ -255,13 +257,13 @@ class SequencePattern(BasePattern[TSeq, Union[str, TSeq]]):
     def __calc_repr__(self):
         return f"{self.origin.__name__}[{self.base}]"
 
-    def prefixed(self) -> SequencePattern:
+    def prefixed(self) -> Self:
         self._mode = "pre"
-        return super(SequencePattern, self).prefixed()
+        return super().prefixed()
 
-    def suffixed(self) -> SequencePattern:
+    def suffixed(self) -> Self:
         self._mode = "suf"
-        return super(SequencePattern, self).suffixed()
+        return super().suffixed()
 
 
 TKey = TypeVar("TKey")
@@ -326,13 +328,13 @@ class MappingPattern(BasePattern[Dict[TKey, TVal], Union[str, Dict[TKey, TVal]]]
     def __calc_repr__(self):
         return f"dict[{self.key.origin.__name__}, {self.value}]"
 
-    def prefixed(self) -> MappingPattern:
+    def prefixed(self) -> Self:
         self._mode = "pre"
-        return super().prefixed()  # type: ignore
+        return super().prefixed()
 
-    def suffixed(self) -> MappingPattern:
+    def suffixed(self) -> Self:
         self._mode = "suf"
-        return super().suffixed()  # type: ignore
+        return super().suffixed()
 
 
 _TCase = TypeVar("_TCase")
@@ -450,7 +452,10 @@ NONE = BasePattern(mode=MatchMode.KEEP, origin=None, alias="none")  # type: igno
 ANY = BasePattern(mode=MatchMode.KEEP, origin=Any, alias="any")
 """匹配任意内容的表达式"""
 
-AnyString = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str, alias="any_str")
+def _any_str(_, x: Any) -> str:
+    return str(x)
+
+AnyString = CustomMatchPattern(str, _any_str, "any_str")
 """匹配任意内容并转为字符串的表达式"""
 
 
@@ -465,6 +470,7 @@ def _string(_, x: str) -> str:
 STRING = CustomMatchPattern(str, _string, "str")
 
 
+@final
 class IntPattern(BasePattern[int, Union[str, int]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=int, alias="int")
@@ -500,6 +506,7 @@ INTEGER = IntPattern()
 """整形数表达式，只能接受整数样式的量"""
 
 
+@final
 class FloatPattern(BasePattern[float, Union[str, int, float]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=float, alias="float")
@@ -535,6 +542,7 @@ FLOAT = FloatPattern()
 """浮点数表达式"""
 
 
+@final
 class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Union[int, float], alias="number")
@@ -579,6 +587,7 @@ NUMBER = NumberPattern()
 """一般数表达式，既可以浮点数也可以整数 """
 
 
+@final
 class BoolPattern(BasePattern[bool, Union[str, bool]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=bool, alias="bool")
@@ -635,6 +644,7 @@ URL = BasePattern(
 """匹配网页链接的表达式"""
 
 
+@final
 class HexPattern(BasePattern[int, str]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=int, alias="hex", accepts=str)
@@ -671,6 +681,7 @@ HEX_COLOR = BasePattern(r"(#[0-9a-fA-F]{6})", MatchMode.REGEX_CONVERT, str, lamb
 """匹配16进制颜色代码的表达式"""
 
 
+@final
 class DateTimePattern(BasePattern[datetime, Union[str, int, float]]):
     def __init__(self):
         super().__init__(
