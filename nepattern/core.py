@@ -227,7 +227,7 @@ class BasePattern(Generic[TOrigin, TInput]):
 
     def __new__(cls, *args, **kwargs):
         cls.__eq__ = cls.__calc_eq__
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls)
 
     def __init__(
         self,
