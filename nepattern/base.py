@@ -35,6 +35,8 @@ _T = TypeVar("_T")
 class DirectPattern(BasePattern[TOrigin, TOrigin]):
     """直接判断"""
 
+    __slots__ = ("target",)
+
     def __init__(self, target: TOrigin, alias: str | None = None):
         self.target = target
         super().__init__(mode=MatchMode.KEEP, origin=type(target), alias=alias or str(target))
@@ -88,6 +90,8 @@ class DirectPattern(BasePattern[TOrigin, TOrigin]):
 class DirectTypePattern(BasePattern[TOrigin, TOrigin]):
     """直接类型判断"""
 
+    __slots__ = ("target",)
+
     def __init__(self, target: type[TOrigin], alias: str | None = None):
         self.target = target
         super().__init__(mode=MatchMode.KEEP, origin=target, alias=alias or target.__name__)
@@ -100,6 +104,12 @@ class DirectTypePattern(BasePattern[TOrigin, TOrigin]):
                 )
             )
         return input_
+
+    def prefixed(self):
+        return self
+
+    def suffixed(self):
+        return self
 
     @overload
     def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
@@ -160,6 +170,8 @@ class UnionPattern(BasePattern[Any, _T]):
     optional: bool
     for_validate: list[BasePattern]
     for_equal: list[str | object]
+
+    __slots__ = ("base", "optional", "for_validate", "for_equal")
 
     def __init__(self, base: Iterable[_T | BasePattern[Any, _T]]):
         self.base = list(base)
@@ -343,6 +355,8 @@ _TSwtich = TypeVar("_TSwtich")
 
 class SwitchPattern(BasePattern[_TCase, _TSwtich]):
     switch: dict[_TSwtich | ellipsis, _TCase]
+
+    __slots__ = ("switch",)
 
     def __init__(self, data: dict[_TSwtich | ellipsis, _TCase]):
         self.switch = data

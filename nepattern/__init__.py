@@ -9,6 +9,7 @@ from .base import BOOLEAN as BOOLEAN
 from .base import DATETIME as DATETIME
 from .base import DICT as DICT
 from .base import DirectPattern as DirectPattern
+from .base import DirectTypePattern as DirectTypePattern
 from .base import EMAIL as EMAIL
 from .base import FLOAT as FLOAT
 from .base import HEX as HEX
@@ -59,11 +60,14 @@ global_patterns().update(
         "ip": IP,
         "url": URL,
         "...": ANY,
-        "datetime": DATETIME,
+        "number": NUMBER,
+        list: LIST,
+        tuple: TUPLE,
+        set: SET,
+        dict: DICT,
     }
 )
 global_patterns().set(PathFile)
 
 
-global_patterns().sets([STRING, INTEGER, FLOAT, BOOLEAN, LIST, TUPLE, SET, DICT])
-global_patterns()["number"] = NUMBER
+global_patterns().sets([STRING, INTEGER, FLOAT, BOOLEAN, DATETIME])

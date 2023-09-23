@@ -1,8 +1,6 @@
 from collections import UserDict
 from typing import Any, Iterable, final
 
-from tarina import Empty
-
 from .core import BasePattern
 
 @final
@@ -26,7 +24,7 @@ class Patterns(UserDict[Any, BasePattern]):
 
 def create_local_patterns(
     name: str,
-    data: dict[Any, BasePattern | type[Empty]] | None = None,
+    data: dict[Any, BasePattern] | None = None,
     set_current: bool = True,
 ) -> Patterns:
     """

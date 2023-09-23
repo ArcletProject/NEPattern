@@ -6,14 +6,14 @@ from typing import final
 
 from tarina import Empty
 
-from .base import UnionPattern
+from .base import UnionPattern, NONE
 
 
 @final
 class Patterns(UserDict):
     def __init__(self, name):
         self.name = name
-        super().__init__({"": Empty})
+        super().__init__({"": NONE})
 
     def set(self, target, alias=None, cover=True, no_alias=False):
         """
