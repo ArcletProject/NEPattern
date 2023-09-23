@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from enum import Enum, IntEnum
 import re
 from typing import Any, Callable, Generic, TypeVar
@@ -226,6 +225,10 @@ class BasePattern(Generic[TOrigin, TInput]):
         "_repr",
     )
 
+    def __new__(cls, *args, **kwargs):
+        cls.__eq__ = cls.__calc_eq__
+        return super().__new__(cls, *args, **kwargs)
+
     def __init__(
         self,
         pattern: str = ".+",
@@ -261,7 +264,7 @@ class BasePattern(Generic[TOrigin, TInput]):
             self._accepts = get_args(accepts) or (accepts,)
         self._pattern_accepts = addition_accepts
         self._repr = self.__calc_repr__()
-        self._hash = hash(self._repr)
+        self._hash = self.__calc_hash__()
 
         if not addition_accepts:
             self.accept = (lambda x: True) if _accepts is Any else (lambda _: generic_isinstance(_, _accepts))
@@ -276,7 +279,10 @@ class BasePattern(Generic[TOrigin, TInput]):
 
     def refresh(self):  # pragma: no cover
         self._repr = self.__calc_repr__()
-        self._hash = hash(self._repr)
+        self._hash = self.__calc_hash__()
+
+    def __calc_hash__(self):
+        return hash((self._repr, self.origin, self.mode, self.alias, self.previous, self._accepts, self.pattern))
 
     def __calc_repr__(self):
         if self.mode == MatchMode.KEEP:
@@ -315,8 +321,8 @@ class BasePattern(Generic[TOrigin, TInput]):
     def __hash__(self):
         return self._hash
 
-    def __eq__(self, other):
-        return isinstance(other, BasePattern) and self._repr == other._repr
+    def __calc_eq__(self, other):
+        return isinstance(other, self.__class__) and self._hash == other._hash
 
     @staticmethod
     def of(unit: type[TOrigin]):

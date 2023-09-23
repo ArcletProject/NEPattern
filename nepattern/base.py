@@ -77,6 +77,8 @@ class DirectPattern(BasePattern[TOrigin, TOrigin]):
             return ValidateResult(error=e, flag=ResultFlag.ERROR)
         return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
 
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, DirectPattern) and self.target == other.target
 
 class DirectTypePattern(BasePattern[TOrigin, TOrigin]):
     """直接类型判断"""
@@ -126,6 +128,8 @@ class DirectTypePattern(BasePattern[TOrigin, TOrigin]):
             return ValidateResult(error=e, flag=ResultFlag.ERROR)
         return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
 
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, DirectTypePattern) and self.target == other.target
 
 class RegexPattern(BasePattern[Match[str], str]):
     """针对正则的特化匹配，支持正则组"""
@@ -147,6 +151,9 @@ class RegexPattern(BasePattern[Match[str], str]):
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.pattern)
         )
+
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, RegexPattern) and self.pattern == other.pattern
 
 
 class UnionPattern(BasePattern[Any, _T]):
@@ -199,8 +206,10 @@ class UnionPattern(BasePattern[Any, _T]):
     def __or__(self, other: BasePattern[Any, _T1]) -> UnionPattern[Union[_T, _T1]]:
         return UnionPattern([*self.base, other])  # type: ignore
 
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, UnionPattern) and self.base == other.base
+
 TSeq = TypeVar("TSeq", list, tuple, set)
-#TIterMode = TypeVar("TIterMode", bound=Literal["pre", "suf", "all"])
 
 class IterMode(str, Enum):
     PRE = "pre"
@@ -252,6 +261,7 @@ class SequencePattern(BasePattern[TSeq, Union[str, TSeq]], Generic[TSeq, TIterMo
 
     def __calc_repr__(self):
         return f"{self.origin.__name__}[{self.base}]"
+
 
 TKey = TypeVar("TKey")
 TVal = TypeVar("TVal")
@@ -351,6 +361,9 @@ class SwitchPattern(BasePattern[_TCase, _TSwtich]):
                 lang.require("nepattern", "content_error").format(target=input_, expected=self._repr)
             ) from e
 
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, SwitchPattern) and self.switch == other.switch
+
 
 class ForwardRefPattern(BasePattern[Any, Any]):
     def __init__(self, ref: ForwardRef):
@@ -372,6 +385,9 @@ class ForwardRefPattern(BasePattern[Any, Any]):
                 )
             )
         return input_
+
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, ForwardRefPattern) and self.ref == other.ref
 
 
 class AntiPattern(BasePattern[TOrigin, Any]):
@@ -422,6 +438,8 @@ class AntiPattern(BasePattern[TOrigin, Any]):
                 default = cast(TDefault, default)
             return ValidateResult(default, flag=ResultFlag.DEFAULT)
 
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, AntiPattern) and self.base == other.base
 
 TInput = TypeVar("TInput")
 
@@ -434,8 +452,11 @@ class CustomMatchPattern(BasePattern[TOrigin, TInput]):
         alias: str | None = None,
     ):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=origin, alias=alias or func.__name__)
+        self.__func__ = func
         self.match = func.__get__(self)  # type: ignore
 
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, CustomMatchPattern) and self.__func__ == other.__func__
 
 NONE = BasePattern(mode=MatchMode.KEEP, origin=None, alias="none")  # type: ignore
 
@@ -448,17 +469,23 @@ def _any_str(_, x: Any) -> str:
 AnyString = CustomMatchPattern(str, _any_str, "any_str")
 """匹配任意内容并转为字符串的表达式"""
 
-
-def _string(_, x: str) -> str:
-    if not isinstance(x, str):  # pragma: no cover
-        raise MatchFailed(
-            lang.require("nepattern", "type_error").format(type=x.__class__, target=x, expected="str")
-        )
-    return x
-
-
-STRING = CustomMatchPattern(str, _string, "str")
-
+@final
+class StrPattern(BasePattern[str, str]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.KEEP, origin=str, alias="str", accepts=str)
+    
+    def match(self, input_: str) -> str:
+        if not isinstance(input_, str):  # pragma: no cover
+            raise MatchFailed(
+                lang.require("nepattern", "type_error")
+                .format(type=input_.__class__, target=input_, expected="str")
+            )
+        return input_
+    
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, StrPattern)
+    
+STRING = StrPattern()
 
 @final
 class IntPattern(BasePattern[int, Union[str, int]]):
@@ -481,6 +508,8 @@ class IntPattern(BasePattern[int, Union[str, int]]):
                 lang.require("nepattern", "content_error").format(target=input_, expected="int")
             ) from e
 
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, IntPattern)
 
 
 INTEGER = IntPattern()
@@ -508,7 +537,8 @@ class FloatPattern(BasePattern[float, Union[str, int, float]]):
                 lang.require("nepattern", "content_error").format(target=input_, expected="float")
             ) from e
 
-
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, FloatPattern)
 
 FLOAT = FloatPattern()
 """浮点数表达式"""
@@ -536,7 +566,8 @@ class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
                 lang.require("nepattern", "content_error").format(target=input_, expected="int | float")
             ) from e
 
-
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, NumberPattern)
 
 NUMBER = NumberPattern()
 """一般数表达式，既可以浮点数也可以整数 """
@@ -561,7 +592,9 @@ class BoolPattern(BasePattern[bool, Union[str, bool]]):
         if input_ in self._BOOL:
             return self._BOOL[input_]
         raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="bool"))
-
+    
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, BoolPattern)
 
 
 BOOLEAN = BoolPattern()
@@ -608,7 +641,9 @@ class HexPattern(BasePattern[int, str]):
             raise MatchFailed(
                 lang.require("nepattern", "content_error").format(target=input_, expected="hex")
             ) from e
-
+    
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, HexPattern)
 
 HEX = HexPattern()
 """匹配16进制数的表达式"""
@@ -635,6 +670,8 @@ class DateTimePattern(BasePattern[datetime, Union[str, int, float]]):
             )
         return DateParser.parse(input_)
 
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, DateTimePattern)
 
 DATETIME = DateTimePattern()
 """匹配时间的表达式"""

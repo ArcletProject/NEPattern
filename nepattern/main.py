@@ -81,9 +81,9 @@ def parser(item: Any, extra: str = "allow") -> BasePattern:
     with suppress(TypeError):
         if item and (pat := all_patterns().get(item, None)):
             return pat
-    with suppress(TypeError):
-        if not inspect.isclass(item) and isinstance(item, (GenericAlias, CGenericAlias, CUnionType)):
-            return _generic_parser(item, extra)
+    #with suppress(TypeError):
+    if not inspect.isclass(item) and isinstance(item, (GenericAlias, CGenericAlias, CUnionType)):
+        return _generic_parser(item, extra)
     if isinstance(item, TypeVar):
         return _typevar_parser(item)
     if inspect.isclass(item) and getattr(item, "_is_protocol", False):

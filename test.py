@@ -237,12 +237,9 @@ def test_parser():
     pat11 = parser(int)
     assert pat11.validate(-321).success
     pat11_1 = parser(123)
-    assert pat11_1 == BasePattern.on(123)
     print(pat11, pat11_1)
     pat11_2 = BasePattern.to(int)
     assert pat11_2 == pat11
-    assert BasePattern.to(None) == NONE
-    assert parser(BasePattern.of(int)) == BasePattern.of(int)
     assert isinstance(parser(Literal["a", "b"]), UnionPattern)
     assert parser(Type[int]).origin is type
     assert parser(complex) == BasePattern.of(complex)
@@ -556,6 +553,12 @@ def test_value_operate():
     assert pat22_1.validate(123.0).value() == 124
     assert pat22_1.validate("123.0").failed
     assert pat22_1.validate([]).failed
+
+def test_eq():
+    assert parser(123) == BasePattern.on(123)
+    assert BasePattern.to(None) == NONE
+    assert parser(BasePattern.of(int)) == BasePattern.of(int)
+    assert parser(str) == STRING
 
 if __name__ == "__main__":
     import pytest
