@@ -340,20 +340,6 @@ class BasePattern(Generic[TOrigin, TInput]):
         res = parser(content, "allow")
         return res if isinstance(res, BasePattern) else parser(Any)
 
-    def prefixed(self):
-        """让表达式能在某些场景下实现前缀匹配; 返回自身的拷贝"""
-        cp_self = deepcopy(self)
-        if self.mode in (MatchMode.REGEX_MATCH, MatchMode.REGEX_CONVERT):
-            cp_self.regex_pattern = re.compile(f"^{self.pattern}")
-        return cp_self  # pragma: no cover
-
-    def suffixed(self):
-        """让表达式能在某些场景下实现后缀匹配; 返回自身的拷贝"""
-        cp_self = deepcopy(self)
-        if self.mode in (MatchMode.REGEX_MATCH, MatchMode.REGEX_CONVERT):
-            cp_self.regex_pattern = re.compile(f"{self.pattern}$")
-        return cp_self  # pragma: no cover
-
     def validate(self, input_: Any, default: TDefault | Empty = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
         """
         对传入的值进行正向验证，返回可能的匹配与转化结果。

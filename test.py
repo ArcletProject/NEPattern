@@ -324,6 +324,13 @@ def test_seq_pattern():
         SequencePattern(dict, BasePattern.of(int))  # type: ignore
     except ValueError as e:
         print(e)
+    pat13_3 = SequencePattern(list, INTEGER, IterMode.PRE)
+    assert pat13_3.validate([1, 2, 3]).success
+    assert pat13_3.validate("[1, 2, 3.0]").value() == [1, 2]
+    pat13_4 = SequencePattern(list, INTEGER, IterMode.SUF)
+    assert pat13_4.validate([1, 2, 3]).success
+    assert pat13_4.validate("[1, 2, 3.0]").failed
+    assert pat13_4.validate("[1.0, 2, 3]").value() == [2, 3]
 
 
 def test_map_pattern():
@@ -336,6 +343,18 @@ def test_map_pattern():
     pat14_1 = parser(Dict[int, int])
     assert pat14_1.validate({"a": 1, "b": 2}).failed
     print(pat14)
+    pat14_2 = MappingPattern(
+        INTEGER, BOOLEAN, IterMode.PRE
+    )
+    assert pat14_2.validate({1: True, 2: False}).success
+    assert pat14_2.validate({1: True, 2: None}).value() == {1: True}
+    assert pat14_2.validate({0: None, 1: True, 2: False}).failed
+    pat14_3 = MappingPattern(
+        INTEGER, BOOLEAN, IterMode.SUF
+    )
+    assert pat14_3.validate({1: True, 2: False}).success
+    assert pat14_3.validate({0: None, 1: False, 2: True}).value() == {1: False, 2: True}
+    assert pat14_3.validate({0: False, 1: True, 2: None}).failed
 
 
 def test_converters():
@@ -406,50 +425,6 @@ def test_bind():
 
     assert isinstance(Bind[int, lambda x: x < 10], BasePattern)
     assert str(Bind[int, lambda x: 0 <= x <= 10, "0~10"]) == '0~10'
-
-
-def test_prefix():
-    from typing import List, Dict
-
-    pat15 = INTEGER.prefixed()
-    assert pat15.validate("123add").value() == 123
-    assert pat15.validate("add123").failed
-    pat15_1 = parser(["abc", "dba", 1.0, int]).prefixed()
-    assert pat15_1.validate("abcd").value() == "abc"
-    assert pat15_1.validate("2a").value() == 2
-    assert pat15_1.validate("1.0").value() == 1
-    pat15_2 = parser(List[int]).prefixed()
-    assert pat15_2.validate([1, 2, 'a']).value() == [1, 2]
-    assert pat15_2.validate(["a", 1, 2]).failed
-    pat15_3: BasePattern[Dict, Any] = parser(Dict[int, bool]).prefixed()
-    assert pat15_3.validate({0: True, 1: False, 2: None}).value() == {0: True, 1: False}
-    assert pat15_3.validate({0: None, 1: True, 2: False}).failed
-    assert pat15_3.validate({'a': True, 1: False, 2: None}).failed
-    pat15_4 = BasePattern.of(int).prefixed()
-    assert pat15_4.validate(1).success
-    assert pat15_4.validate(1.0).failed
-
-
-def test_suffix():
-    from typing import List, Dict
-
-    pat16 = INTEGER.suffixed()
-    assert pat16.validate("add123").value() == 123
-    assert pat16.validate("123add").failed
-    pat16_1 = parser(["abc", "dba", 1.0, int]).suffixed()
-    assert pat16_1.validate("dabc").value() == "abc"
-    assert pat16_1.validate("a2").value() == 2
-    assert pat16_1.validate("0.1").value() == 1
-    pat15_2 = parser(List[int]).suffixed()
-    assert pat15_2.validate([1, 2, 'a']).failed
-    assert pat15_2.validate(["a", 1, 2]).value() == [1, 2]
-    pat16_3: BasePattern[Dict, Any] = parser(Dict[int, bool]).suffixed()
-    assert pat16_3.validate({0: None, 1: False, 2: True}).value() == {1: False, 2: True}
-    assert pat16_3.validate({0: False, 1: True, 2: None}).failed
-    assert pat16_3.validate({0: True, 1: False, 'a': None}).failed
-    pat16_4 = BasePattern.of(int).suffixed()
-    assert pat16_4.validate(1).success
-    assert pat16_4.validate(1.0).failed
 
 
 def test_dunder():
@@ -527,14 +502,10 @@ def test_direct():
     assert pat20.validate("abcd").failed
     assert pat20.validate(123).failed
     assert pat20.validate("123", 123).value() == 123
-    assert pat20.prefixed().validate("abcd").value() == "abc"
-    assert pat20.suffixed().validate("dabc").value() == "abc"
     pat20_1 = DirectPattern(123)
     assert pat20_1.validate(123).value() == 123
     assert pat20_1.validate("123").failed
     assert pat20_1.validate(123, "123").value() == 123
-    assert pat20_1.prefixed().validate("1234").failed
-    assert pat20_1.suffixed().validate("4123").failed
     assert pat20_1.match(123) == 123
     try:
         pat20_1.match("123")
@@ -544,8 +515,6 @@ def test_direct():
     assert pat21.validate(123).value() == 123
     assert pat21.validate("123").failed
     assert pat21.validate(123, "123").value() == 123
-    assert pat21.prefixed().validate("1234").failed
-    assert pat21.suffixed().validate("4123").failed
     assert pat21.match(123) == 123
     assert pat21.match(456) == 456
 

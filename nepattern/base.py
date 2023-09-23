@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from datetime import datetime
 from pathlib import Path
 import re
@@ -17,11 +18,10 @@ from typing import (
     Union,
     cast,
     final,
-    overload,
+    overload, Generic,
 )
 
 from tarina import DateParser, Empty, lang
-from typing_extensions import Self, Unpack, TypeVarTuple
 
 from .core import BasePattern, MatchMode, ResultFlag, ValidateResult
 from .exception import MatchFailed
@@ -31,7 +31,6 @@ TOrigin = TypeVar("TOrigin")
 TDefault = TypeVar("TDefault")
 _T = TypeVar("_T")
 _T1 = TypeVar("_T1")
-Ts = TypeVarTuple("Ts")
 
 
 class DirectPattern(BasePattern[TOrigin, TOrigin]):
@@ -42,16 +41,6 @@ class DirectPattern(BasePattern[TOrigin, TOrigin]):
     def __init__(self, target: TOrigin, alias: str | None = None):
         self.target = target
         super().__init__(mode=MatchMode.KEEP, origin=type(target), alias=alias or str(target))
-
-    def prefixed(self):
-        if isinstance(self.target, str):
-            return BasePattern(self.target, MatchMode.REGEX_MATCH, alias=self.alias).prefixed()
-        return self
-
-    def suffixed(self):
-        if isinstance(self.target, str):
-            return BasePattern(self.target, MatchMode.REGEX_MATCH, alias=self.alias).suffixed()
-        return self
 
     def match(self, input_: Any):
         if input_ != self.target:
@@ -106,12 +95,6 @@ class DirectTypePattern(BasePattern[TOrigin, TOrigin]):
                 )
             )
         return input_
-
-    def prefixed(self):
-        return self
-
-    def suffixed(self):
-        return self
 
     @overload
     def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
@@ -213,37 +196,28 @@ class UnionPattern(BasePattern[Any, _T]):
     def __calc_repr__(self):
         return "|".join(repr(a) for a in (*self.for_validate, *self.for_equal))
 
-    def prefixed(self) -> Self:
-        from .main import parser
-
-        return UnionPattern(
-            [pat.prefixed() for pat in self.for_validate]
-            + [parser(eq).prefixed() if isinstance(eq, str) else eq for eq in self.for_equal],  # type: ignore
-        )
-
-    def suffixed(self) -> Self:
-        from .main import parser
-
-        return UnionPattern(
-            [pat.suffixed() for pat in self.for_validate]
-            + [parser(eq).suffixed() if isinstance(eq, str) else eq for eq in self.for_equal],  # type: ignore
-        )
-
     def __or__(self, other: BasePattern[Any, _T1]) -> UnionPattern[Union[_T, _T1]]:
         return UnionPattern([*self.base, other])  # type: ignore
 
 TSeq = TypeVar("TSeq", list, tuple, set)
+#TIterMode = TypeVar("TIterMode", bound=Literal["pre", "suf", "all"])
 
+class IterMode(str, Enum):
+    PRE = "pre"
+    SUF = "suf"
+    ALL = "all"
 
-class SequencePattern(BasePattern[TSeq, Union[str, TSeq]]):
+TIterMode = TypeVar("TIterMode", bound=IterMode)
+
+class SequencePattern(BasePattern[TSeq, Union[str, TSeq]], Generic[TSeq, TIterMode]):
     """匹配列表或者元组或者集合"""
 
     base: BasePattern
-    _mode: Literal["pre", "suf", "all"]
+    itermode: TIterMode
 
-    def __init__(self, form: type[TSeq], base: BasePattern):
+    def __init__(self, form: type[TSeq], base: BasePattern, mode: TIterMode = IterMode.ALL):
         self.base = base
-        self._mode = "all"
+        self.itermode = mode
         if form is list:
             super().__init__(r"\[(.+?)\]", MatchMode.REGEX_CONVERT, form, alias=f"list[{base}]")
         elif form is tuple:
@@ -265,44 +239,44 @@ class SequencePattern(BasePattern[TSeq, Union[str, TSeq]]):
                 fail.append((_max, MatchFailed(f"{s} is not matched with {self.base}")))
 
         if (
-            (self._mode == "all" and fail)
-            or (self._mode == "pre" and fail and fail[0][0] == 0)
-            or (self._mode == "suf" and fail and fail[-1][0] == _max)
+            (self.itermode == IterMode.ALL and fail)
+            or (self.itermode == IterMode.PRE and fail and fail[0][0] == 0)
+            or (self.itermode == IterMode.SUF and fail and fail[-1][0] == _max)
         ):
             raise fail[0][1]
-        if self._mode == "pre" and fail:
+        if self.itermode == IterMode.PRE and fail:
             return self.origin(i[1] for i in success if i[0] < fail[0][0])
-        if self._mode == "suf" and fail:
+        if self.itermode == IterMode.SUF and fail:
             return self.origin(i[1] for i in success if i[0] > fail[-1][0])
         return self.origin(i[1] for i in success)
 
     def __calc_repr__(self):
         return f"{self.origin.__name__}[{self.base}]"
 
-    def prefixed(self) -> Self:
-        self._mode = "pre"
-        return super().prefixed()
-
-    def suffixed(self) -> Self:
-        self._mode = "suf"
-        return super().suffixed()
-
-
 TKey = TypeVar("TKey")
 TVal = TypeVar("TVal")
 
 
-class MappingPattern(BasePattern[Dict[TKey, TVal], Union[str, Dict[TKey, TVal]]]):
+class MappingPattern(
+    BasePattern[Dict[TKey, TVal], Union[str, Dict[TKey, TVal]]],
+    Generic[TKey, TVal, TIterMode],
+):
     """匹配字典或者映射表"""
 
     key: BasePattern[TKey, Any]
     value: BasePattern[TVal, Any]
-    _mode: Literal["pre", "suf", "all"]
+    itermode: TIterMode
 
-    def __init__(self, arg_key: BasePattern[TKey, Any], arg_value: BasePattern[TVal, Any]):
+
+    def __init__(
+        self, 
+        arg_key: BasePattern[TKey, Any], 
+        arg_value: BasePattern[TVal, Any],
+        mode: TIterMode = IterMode.ALL
+    ):
         self.key = arg_key
         self.value = arg_value
-        self._mode = "all"
+        self.itermode = mode
         super().__init__(
             r"\{(.+?)\}",
             MatchMode.REGEX_CONVERT,
@@ -311,8 +285,8 @@ class MappingPattern(BasePattern[Dict[TKey, TVal], Union[str, Dict[TKey, TVal]]]
         )
         self.converter = lambda _, x: x[1]
 
-    def match(self, text: Any):
-        _res = self._MATCHES[MatchMode.REGEX_CONVERT](self, text)  # type: ignore
+    def match(self, input_: str | dict):
+        _res = self._MATCHES[MatchMode.REGEX_CONVERT](self, input_)  # type: ignore
         success: list[tuple[int, Any, Any]] = []
         fail: list[tuple[int, MatchFailed]] = []
         _max = 0
@@ -336,27 +310,19 @@ class MappingPattern(BasePattern[Dict[TKey, TVal], Union[str, Dict[TKey, TVal]]]
                     )
                 )
         if (
-            (self._mode == "all" and fail)
-            or (self._mode == "pre" and fail and fail[0][0] == 0)
-            or (self._mode == "suf" and fail and fail[-1][0] == _max)
+            (self.itermode == IterMode.ALL and fail)
+            or (self.itermode == IterMode.PRE and fail and fail[0][0] == 0)
+            or (self.itermode == IterMode.SUF and fail and fail[-1][0] == _max)
         ):
             raise fail[0][1]
-        if self._mode == "pre" and fail:
+        if self.itermode == IterMode.PRE and fail:
             return {i[1]: i[2] for i in success if i[0] < fail[0][0]}
-        if self._mode == "suf" and fail:
+        if self.itermode == IterMode.SUF and fail:
             return {i[1]: i[2] for i in success if i[0] > fail[-1][0]}
         return {i[1]: i[2] for i in success}
 
     def __calc_repr__(self):
         return f"dict[{self.key.origin.__name__}, {self.value}]"
-
-    def prefixed(self) -> Self:
-        self._mode = "pre"
-        return super().prefixed()
-
-    def suffixed(self) -> Self:
-        self._mode = "suf"
-        return super().suffixed()
 
 
 _TCase = TypeVar("_TCase")
@@ -515,15 +481,6 @@ class IntPattern(BasePattern[int, Union[str, int]]):
                 lang.require("nepattern", "content_error").format(target=input_, expected="int")
             ) from e
 
-    def prefixed(self):
-        return BasePattern(
-            r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int"
-        ).prefixed()
-
-    def suffixed(self):
-        return BasePattern(
-            r"(\-?\d+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1]), "int"
-        ).suffixed()
 
 
 INTEGER = IntPattern()
@@ -551,15 +508,6 @@ class FloatPattern(BasePattern[float, Union[str, int, float]]):
                 lang.require("nepattern", "content_error").format(target=input_, expected="float")
             ) from e
 
-    def prefixed(self):  # pragma: no cover
-        return BasePattern(
-            r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float"
-        ).prefixed()
-
-    def suffixed(self):  # pragma: no cover
-        return BasePattern(
-            r"(\-?\d+\.?\d*)", MatchMode.REGEX_CONVERT, float, lambda _, x: float(x[1]), "float"
-        ).suffixed()
 
 
 FLOAT = FloatPattern()
@@ -588,23 +536,6 @@ class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
                 lang.require("nepattern", "content_error").format(target=input_, expected="int | float")
             ) from e
 
-    def prefixed(self):  # pragma: no cover
-        return BasePattern(
-            r"(\-?\d+(?P<float>\.\d*)?)",
-            MatchMode.REGEX_CONVERT,
-            Union[int, float],
-            lambda _, x: float(x[1]) if x["float"] else int(x[1]),
-            "number",
-        ).prefixed()
-
-    def suffixed(self):  # pragma: no cover
-        return BasePattern(
-            r"(\-?\d+(?P<float>\.\d*)?)",
-            MatchMode.REGEX_CONVERT,
-            Union[int, float],
-            lambda _, x: float(x[1]) if x["float"] else int(x[1]),
-            "number",
-        ).suffixed()
 
 
 NUMBER = NumberPattern()
@@ -631,15 +562,6 @@ class BoolPattern(BasePattern[bool, Union[str, bool]]):
             return self._BOOL[input_]
         raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="bool"))
 
-    def prefixed(self):  # pragma: no cover
-        return BasePattern(
-            r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool"
-        ).prefixed()
-
-    def suffixed(self):  # pragma: no cover
-        return BasePattern(
-            r"(?i:True|False)", MatchMode.REGEX_CONVERT, bool, lambda _, x: x[0].lower() == "true", "bool"
-        ).suffixed()
 
 
 BOOLEAN = BoolPattern()
@@ -686,16 +608,6 @@ class HexPattern(BasePattern[int, str]):
             raise MatchFailed(
                 lang.require("nepattern", "content_error").format(target=input_, expected="hex")
             ) from e
-
-    def prefixed(self):  # pragma: no cover
-        return BasePattern(
-            r"((?:0x)?[0-9a-fA-F]+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1], 16), "hex"
-        ).prefixed()
-
-    def suffixed(self):  # pragma: no cover
-        return BasePattern(
-            r"((?:0x)?[0-9a-fA-F]+)", MatchMode.REGEX_CONVERT, int, lambda _, x: int(x[1], 16), "hex"
-        ).suffixed()
 
 
 HEX = HexPattern()

@@ -16,6 +16,7 @@ from .base import HEX as HEX
 from .base import HEX_COLOR as HEX_COLOR
 from .base import INTEGER as INTEGER
 from .base import IP as IP
+from .base import IterMode as IterMode
 from .base import LIST as LIST
 from .base import MappingPattern as MappingPattern
 from .base import NONE as NONE
