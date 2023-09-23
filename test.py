@@ -166,9 +166,9 @@ def test_pattern_accepts():
     assert pat6_2.validate(123.123).value() == 123.123
     assert pat6_2.validate(b'123').value() == b'123'
     print(pat6_2)
-    pat6_3 = BasePattern(mode=MatchMode.KEEP, addition_accepts=NUMBER)
+    pat6_3 = BasePattern(mode=MatchMode.KEEP, addition_accepts=INTEGER | BOOLEAN)
     assert pat6_3.validate(123).value() == 123
-    assert pat6_3.validate(123.123).value() == 123.123
+    assert pat6_3.validate(True).value() is True
     assert pat6_3.validate(b'123').failed
 
 
@@ -290,7 +290,7 @@ def test_parser():
 
 
 def test_union_pattern():
-    from typing import Union, Optional
+    from typing import Union, Optional, List
 
     pat12 = parser(Union[int, bool])
     assert pat12.validate(123).success
@@ -304,6 +304,9 @@ def test_union_pattern():
     assert pat12_2.validate("abc").success
     assert pat12_2.validate("bca").failed
     print(pat12, pat12_1, pat12_2)
+    pat12_3 = UnionPattern._(List[bool], int)
+    pat12_4 = pat12_2 | pat12_3
+    print(pat12_3, pat12_4)
 
 
 def test_seq_pattern():
@@ -473,7 +476,7 @@ def test_regex_pattern():
     pat18_1 = parser(r"re:(\d+)")  # str starts with "re:" will convert to BasePattern instead of RegexPattern
     assert pat18_1.validate("1234").value() == '1234'
     pat18_2 = parser(r"rep:(\d+)")  # str starts with "rep:" will convert to RegexPattern
-    assert pat18_2.validate("1234").value().groups() == ('1234',)
+    assert pat18_2.validate("1234").value().groups() == ('1234',)  # type: ignore
     pat18_3 = parser(compile(r"(\d+)"))  # re.Pattern will convert to RegexPattern
     assert pat18_3.validate("1234").value().groups() == ('1234',)
 

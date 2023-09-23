@@ -40,9 +40,6 @@ class ResultFlag(str, Enum):
 
 T = TypeVar("T")
 TInput = TypeVar("TInput")
-TInput1 = TypeVar("TInput1")
-TInput2 = TypeVar("TInput2")
-TInput3 = TypeVar("TInput3")
 TOrigin = TypeVar("TOrigin")
 TVOrigin = TypeVar("TVOrigin")
 TDefault = TypeVar("TDefault")
@@ -348,14 +345,14 @@ class BasePattern(Generic[TOrigin, TInput]):
         cp_self = deepcopy(self)
         if self.mode in (MatchMode.REGEX_MATCH, MatchMode.REGEX_CONVERT):
             cp_self.regex_pattern = re.compile(f"^{self.pattern}")
-        return cp_self
+        return cp_self  # pragma: no cover
 
     def suffixed(self):
         """让表达式能在某些场景下实现后缀匹配; 返回自身的拷贝"""
         cp_self = deepcopy(self)
         if self.mode in (MatchMode.REGEX_MATCH, MatchMode.REGEX_CONVERT):
             cp_self.regex_pattern = re.compile(f"{self.pattern}$")
-        return cp_self
+        return cp_self  # pragma: no cover
 
     def validate(self, input_: Any, default: TDefault | Empty = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
         """
@@ -386,5 +383,13 @@ class BasePattern(Generic[TOrigin, TInput]):
             self.alias = other
         return self
 
+    def __or__(self, other):
+        from .base import UnionPattern
+
+        if isinstance(other, BasePattern):
+            return UnionPattern([self, other])  # type: ignore
+        raise TypeError(  # pragma: no cover
+            f"unsupported operand type(s) for |: 'BasePattern' and '{other.__class__.__name__}'"
+        )
 
 __all__ = ["MatchMode", "BasePattern", "ValidateResult", "TOrigin", "ResultFlag"]

@@ -21,7 +21,7 @@ from typing import (
 )
 
 from tarina import DateParser, Empty, lang
-from typing_extensions import Self
+from typing_extensions import Self, Unpack, TypeVarTuple
 
 from .core import BasePattern, MatchMode, ResultFlag, ValidateResult
 from .exception import MatchFailed
@@ -30,6 +30,8 @@ from .util import TPattern
 TOrigin = TypeVar("TOrigin")
 TDefault = TypeVar("TDefault")
 _T = TypeVar("_T")
+_T1 = TypeVar("_T1")
+Ts = TypeVarTuple("Ts")
 
 
 class DirectPattern(BasePattern[TOrigin, TOrigin]):
@@ -173,7 +175,7 @@ class UnionPattern(BasePattern[Any, _T]):
 
     __slots__ = ("base", "optional", "for_validate", "for_equal")
 
-    def __init__(self, base: Iterable[_T | BasePattern[Any, _T]]):
+    def __init__(self, base: Iterable[BasePattern[Any, _T] | _T]):
         self.base = list(base)
         self.optional = False
         self.for_validate = []
@@ -201,6 +203,12 @@ class UnionPattern(BasePattern[Any, _T]):
                 lang.require("nepattern", "content_error").format(target=text, expected=self.alias)
             )
         return text
+    
+    @classmethod
+    def _(cls, *types: type[_T1]) -> UnionPattern[_T1]:
+        from .main import parser
+
+        return cls([parser(i) for i in types])  # type: ignore
 
     def __calc_repr__(self):
         return "|".join(repr(a) for a in (*self.for_validate, *self.for_equal))
@@ -221,6 +229,8 @@ class UnionPattern(BasePattern[Any, _T]):
             + [parser(eq).suffixed() if isinstance(eq, str) else eq for eq in self.for_equal],  # type: ignore
         )
 
+    def __or__(self, other: BasePattern[Any, _T1]) -> UnionPattern[Union[_T, _T1]]:
+        return UnionPattern([*self.base, other])  # type: ignore
 
 TSeq = TypeVar("TSeq", list, tuple, set)
 
