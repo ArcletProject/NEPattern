@@ -254,11 +254,11 @@ def type_parser(item: Any, extra: str = "allow") -> BasePattern:
         if item and (pat := all_patterns().get(item, None)):
             return pat
     with suppress(TypeError):
-        if not inspect.isclass(item) and isinstance(item, (GenericAlias, CGenericAlias, CUnionType)):
+        if isinstance(item, (GenericAlias, CGenericAlias, CUnionType)):
             return _generic_parser(item, extra)
     if isinstance(item, TypeVar):
         return _typevar_parser(item)
-    if inspect.isclass(item) and getattr(item, "_is_protocol", False):
+    if getattr(item, "_is_protocol", False):
         return _protocol_parser(item)
     if isinstance(item, (FunctionType, MethodType, LambdaType)):
         if len((sig := inspect.signature(item)).parameters) not in (1, 2):  # pragma: no cover

@@ -7,11 +7,14 @@ from typing import TYPE_CHECKING, List, Pattern, Union
 from pathlib import Path
 from tarina.lang import lang
 
-if sys.version_info >= (3, 10):   # pragma: no cover
+if sys.version_info >= (3, 9):  # pragma: no cover
     from types import GenericAlias as CGenericAlias  # noqa
-    from types import UnionType as CUnionType  # noqa
 else:
     CGenericAlias: type = type(List[int])  # noqa
+
+if sys.version_info >= (3, 10):   # pragma: no cover
+    from types import UnionType as CUnionType  # noqa
+else:
     CUnionType: type = type(Union[int, str])  # noqa
 
 if TYPE_CHECKING:
