@@ -9,9 +9,21 @@ def test_type():
 def test_basic():
     from datetime import datetime
 
+    assert STRING.validate("123").success
+    assert STRING.validate(123).value() == "123"
+    assert STRING.validate(123.456).value() == "123.456"
+    assert STRING.validate(b"123").value() == "123"
+    assert STRING.validate([]).failed
+
+    assert BYTES.validate(b"123").success
+    assert BYTES.validate("123").value() == b"123"
+    assert BYTES.validate(123).value() == b"123"
+    assert BYTES.validate(123.456).value() == b"123.456"
+    assert BYTES.validate([]).failed
+
     assert INTEGER.validate(123).success
     assert INTEGER.validate("123").value() == 123
-    assert INTEGER.validate(123.456).failed
+    assert INTEGER.validate(123.456).value() == 123
     assert INTEGER.validate("123.456").failed
     assert INTEGER.validate("-123").success
 
@@ -32,7 +44,7 @@ def test_basic():
     assert BOOLEAN.validate("False").value() == False
     assert BOOLEAN.validate("true").value() == True
     assert BOOLEAN.validate("false").value() == False
-    assert BOOLEAN.validate("1").failed
+    assert BOOLEAN.validate("1").value() == True
     assert BOOLEAN.validate([]).failed
 
     assert HEX.validate(123).failed
@@ -45,6 +57,9 @@ def test_basic():
     assert DATETIME.validate(datetime(2021, 12, 14).timestamp()).value() == datetime(2021, 12, 14, 0, 0, 0)
     assert DATETIME.validate([]).failed
 
+    assert PATH.validate("a/b/c").value().parts == ("a", "b", "c")
+    assert PATH.validate(Path("a/b/c")).value() == Path("a/b/c")
+    assert PATH.validate([]).failed
 
 def test_result():
     res = NUMBER.validate(123)
@@ -169,7 +184,8 @@ def test_pattern_accepts():
     pat6_3 = BasePattern(mode=MatchMode.KEEP, addition_accepts=INTEGER | BOOLEAN)
     assert pat6_3.validate(123).value() == 123
     assert pat6_3.validate(True).value() is True
-    assert pat6_3.validate(b'123').failed
+    assert pat6_3.validate(b'123').value() == b'123'
+    assert pat6_3.validate([]).failed
 
 
 def test_pattern_previous():
@@ -293,7 +309,7 @@ def test_union_pattern():
     assert pat12.validate(123).success
     assert pat12.validate("123").success
     assert pat12.validate("123").value() == 123
-    assert pat12.validate(123.0).failed
+    assert pat12.validate(123.0).value() == 123
     pat12_1 = parser(Optional[str])
     assert pat12_1.validate("123").success
     assert pat12_1.validate(None).success
@@ -315,7 +331,7 @@ def test_seq_pattern():
     assert pat13.validate("[1,2,3]").value() == [1, 2, 3]
     assert pat13.validate([1, 2, 3]).success
     assert pat13_1.validate("(1,2,3)").value() == (1, 2, 3)
-    assert pat13_2.validate("{1,2,3.0}").failed
+    assert pat13_2.validate("{1,2,a}").failed
     print(pat13, pat13_1, pat13_2)
     try:
         SequencePattern(dict, BasePattern.of(int))  # type: ignore
@@ -323,11 +339,11 @@ def test_seq_pattern():
         print(e)
     pat13_3 = SequencePattern(list, INTEGER, IterMode.PRE)
     assert pat13_3.validate([1, 2, 3]).success
-    assert pat13_3.validate("[1, 2, 3.0]").value() == [1, 2]
+    assert pat13_3.validate("[1, 2, a]").value() == [1, 2]
     pat13_4 = SequencePattern(list, INTEGER, IterMode.SUF)
     assert pat13_4.validate([1, 2, 3]).success
-    assert pat13_4.validate("[1, 2, 3.0]").failed
-    assert pat13_4.validate("[1.0, 2, 3]").value() == [2, 3]
+    assert pat13_4.validate("[1, 2, a]").failed
+    assert pat13_4.validate("[a, 2, 3]").value() == [2, 3]
 
 
 def test_map_pattern():
@@ -335,7 +351,7 @@ def test_map_pattern():
 
     pat14 = parser(Dict[str, int])
     assert pat14.validate("{a:1,b:2}").value() == {"a": 1, "b": 2}
-    assert pat14.validate("{a:1.0, b:2}").failed
+    assert pat14.validate("{a:a, b:2}").failed
     assert pat14.validate({"a": 1, "b": 2}).success
     pat14_1 = parser(Dict[int, int])
     assert pat14_1.validate({"a": 1, "b": 2}).failed

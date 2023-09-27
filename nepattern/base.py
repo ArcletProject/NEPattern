@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from decimal import Decimal
 from datetime import datetime
 from pathlib import Path
 import re
@@ -235,6 +236,7 @@ class SequencePattern(BasePattern[TSeq, Union[str, TSeq]], Generic[TSeq, TIterMo
             super().__init__(r"\{(.+?)\}", MatchMode.REGEX_CONVERT, form, alias=f"set[{base}]")
         else:
             raise ValueError(lang.require("nepattern", "sequence_form_error").format(target=str(form)))
+        self.converter = lambda _, x: x[1]  # type: ignore
 
     def match(self, text: Any):
         _res = self._MATCHES[MatchMode.REGEX_CONVERT](self, text)  # type: ignore
@@ -458,52 +460,98 @@ class CustomMatchPattern(BasePattern[TOrigin, TInput]):
     def __calc_eq__(self, other):  # pragma: no cover
         return isinstance(other, CustomMatchPattern) and self.__func__ == other.__func__
 
-NONE = BasePattern(mode=MatchMode.KEEP, origin=None, alias="none")  # type: ignore
+NONE = CustomMatchPattern(type(None), lambda _, x: None, alias="none")  # pragma: no cover
 
-ANY = BasePattern(mode=MatchMode.KEEP, origin=Any, alias="any")
+@final
+class AnyPattern(BasePattern[Any, Any]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.KEEP, origin=Any, alias="any")
+
+    def match(self, input_: Any) -> Any:  # pragma: no cover
+        return input_
+
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, AnyPattern)
+
+
+ANY = AnyPattern()
 """匹配任意内容的表达式"""
 
-def _any_str(_, x: Any) -> str:
-    return str(x)
 
-AnyString = CustomMatchPattern(str, _any_str, "any_str")
+@final
+class AnyStrPattern(BasePattern[str, Any]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.KEEP, origin=str, alias="any_str")
+
+    def match(self, input_: Any) -> str:
+        return str(input_)
+
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, AnyStrPattern)
+
+AnyString = AnyStrPattern()
 """匹配任意内容并转为字符串的表达式"""
 
 @final
-class StrPattern(BasePattern[str, str]):
+class StrPattern(BasePattern[str, Any]):
     def __init__(self):
-        super().__init__(mode=MatchMode.KEEP, origin=str, alias="str", accepts=str)
-    
-    def match(self, input_: str) -> str:
-        if not isinstance(input_, str):  # pragma: no cover
-            raise MatchFailed(
-                lang.require("nepattern", "type_error")
-                .format(type=input_.__class__, target=input_, expected="str")
-            )
-        return input_
-    
+        super().__init__(mode=MatchMode.KEEP, origin=str, alias="str")
+
+    def match(self, input_: Any) -> str:
+        if isinstance(input_, str):
+            return input_.value if isinstance(input_, Enum) else input_
+        elif isinstance(input_, (float, int, Decimal)):
+            return str(input_)
+        elif isinstance(input_, (bytes, bytearray)):
+            return input_.decode()
+        raise MatchFailed(
+            lang.require("nepattern", "type_error")
+            .format(type=input_.__class__, target=input_, expected="str, int, float, bytes, bytearray")
+        )
+
     def __calc_eq__(self, other):  # pragma: no cover
         return isinstance(other, StrPattern)
     
 STRING = StrPattern()
 
 @final
-class IntPattern(BasePattern[int, Union[str, int]]):
+class BytesPattern(BasePattern[bytes, Any]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.KEEP, origin=bytes, alias="bytes")
+
+    def match(self, input_: Any) -> bytes:
+        if isinstance(input_, bytes):
+            return input_
+        elif isinstance(input_, str):
+            return input_.encode()
+        elif isinstance(input_, (float, int, Decimal)):
+            return str(input_).encode()
+        raise MatchFailed(
+            lang.require("nepattern", "type_error").format(
+                type=input_.__class__, target=input_, expected="bytes | str"
+            )
+        )
+
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, BytesPattern)
+
+BYTES = BytesPattern()
+
+
+
+@final
+class IntPattern(BasePattern[int, Any]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=int, alias="int")
 
-    def match(self, input_: Union[str, int]) -> int:
-        if isinstance(input_, int):
+    def match(self, input_: Any) -> int:
+        if isinstance(input_, int) and input_ is not True and input_ is not False:
             return input_
-        if not isinstance(input_, str):
-            raise MatchFailed(
-                lang.require("nepattern", "type_error").format(
-                    type=input_.__class__, target=input_, expected="int | str"
-                )
-            )
+        if isinstance(input_, (str, bytes, bytearray)) and len(input_) > 4300:  # pragma: no cover
+            raise ValueError("int too large to convert")
         try:
             return int(input_)
-        except ValueError as e:
+        except (ValueError, TypeError, OverflowError) as e:
             raise MatchFailed(
                 lang.require("nepattern", "content_error").format(target=input_, expected="int")
             ) from e
@@ -517,22 +565,17 @@ INTEGER = IntPattern()
 
 
 @final
-class FloatPattern(BasePattern[float, Union[str, int, float]]):
+class FloatPattern(BasePattern[float, Any]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=float, alias="float")
 
-    def match(self, input_: Union[str, float, int]) -> float:
+    def match(self, input_: Any) -> float:
         if isinstance(input_, float):
             return input_
-        if not isinstance(input_, (str, int)):
-            raise MatchFailed(
-                lang.require("nepattern", "type_error").format(
-                    type=input_.__class__, target=input_, expected="str | int | float"
-                )
-            )
+
         try:
             return float(input_)
-        except ValueError as e:
+        except (TypeError, ValueError) as e:
             raise MatchFailed(
                 lang.require("nepattern", "content_error").format(target=input_, expected="float")
             ) from e
@@ -545,23 +588,17 @@ FLOAT = FloatPattern()
 
 
 @final
-class NumberPattern(BasePattern[Union[int, float], Union[str, int, float]]):
+class NumberPattern(BasePattern[Union[int, float], Any]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Union[int, float], alias="number")
 
-    def match(self, input_: Union[str, float]) -> float:
+    def match(self, input_: Any) -> float:
         if isinstance(input_, (float, int)):
             return input_
-        if not isinstance(input_, str):
-            raise MatchFailed(
-                lang.require("nepattern", "type_error").format(
-                    type=input_.__class__, target=input_, expected="str | int | float"
-                )
-            )
         try:
             res = float(input_)
             return int(res) if res.is_integer() else res
-        except ValueError as e:
+        except (ValueError, TypeError) as e:
             raise MatchFailed(
                 lang.require("nepattern", "content_error").format(target=input_, expected="int | float")
             ) from e
@@ -574,25 +611,34 @@ NUMBER = NumberPattern()
 
 
 @final
-class BoolPattern(BasePattern[bool, Union[str, bool]]):
+class BoolPattern(BasePattern[bool, Any]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=bool, alias="bool")
 
-    _BOOL = {"true": True, "false": False, "True": True, "False": False}
+    BOOL_FALSE = {0, '0', 'off', 'f', 'false', 'n', 'no'}
+    BOOL_TRUE = {1, '1', 'on', 't', 'true', 'y', 'yes'}
 
-    def match(self, input_: Union[str, bool]) -> bool:
-        if isinstance(input_, bool):
+    def match(self, input_: Any) -> bool:
+        if input_ is True or input_ is False:
             return input_
-        if not isinstance(input_, str):
+        if isinstance(input_, bytes):  # pragma: no cover
+            input_ = input_.decode()
+        if isinstance(input_, str):
+            input_ = input_.lower()
+        try:
+            if input_ in self.BOOL_TRUE:
+                return True
+            if input_ in self.BOOL_FALSE:
+                return False
             raise MatchFailed(
-                lang.require("nepattern", "type_error").format(
-                    type=input_.__class__, target=input_, expected="str | bool"
-                )
+                lang.require("nepattern", "content_error").format(target=input_, expected="bool")
             )
-        if input_ in self._BOOL:
-            return self._BOOL[input_]
-        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="bool"))
-    
+        except (ValueError, TypeError) as e:
+            raise MatchFailed(
+                lang.require("nepattern", "type_error")
+                .format(type=input_.__class__, target=input_, expected="bool")
+            ) from e
+
     def __calc_eq__(self, other):  # pragma: no cover
         return isinstance(other, BoolPattern)
 
@@ -677,13 +723,33 @@ DATETIME = DateTimePattern()
 """匹配时间的表达式"""
 
 
-StrPath = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=Path, alias="path", accepts=str)
+@final
+class PathPattern(BasePattern[Path, Any]):
+    def __init__(self):
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Path, alias="path")
+
+    def match(self, input_: Any) -> Path:
+        if isinstance(input_, Path):
+            return input_
+
+        try:
+            return Path(input_)
+        except (ValueError, TypeError) as e:
+            raise MatchFailed(
+                lang.require("nepattern", "content_error").format(target=input_, expected="PathLike")
+            ) from e
+
+
+    def __calc_eq__(self, other):  # pragma: no cover
+        return isinstance(other, PathPattern)
+
+PATH = PathPattern()
 
 PathFile = BasePattern(
     mode=MatchMode.TYPE_CONVERT,
     origin=bytes,
-    alias="file",
     accepts=Path,
-    previous=StrPath,
+    previous=PATH,
+    alias="filedata",
     converter=lambda _, x: x.read_bytes() if x.exists() and x.is_file() else None,
 )

@@ -48,6 +48,9 @@ TVRF = TypeVar("TVRF", bound=ResultFlag)
 class ValidateResult(Generic[TVOrigin, TVRF]):
     """参数表达式验证结果"""
 
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(cls)
+
     def __init__(
         self,
         value: TVOrigin | type[Empty] = Empty,

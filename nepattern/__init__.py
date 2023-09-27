@@ -1,4 +1,5 @@
 from typing import Any
+from pathlib import Path
 
 from tarina import Empty as Empty  # noqa
 
@@ -6,6 +7,7 @@ from .base import ANY as ANY
 from .base import AntiPattern as AntiPattern
 from .base import AnyString as AnyString
 from .base import BOOLEAN as BOOLEAN
+from .base import BYTES as BYTES
 from .base import DATETIME as DATETIME
 from .base import DICT as DICT
 from .base import DirectPattern as DirectPattern
@@ -21,6 +23,7 @@ from .base import LIST as LIST
 from .base import MappingPattern as MappingPattern
 from .base import NONE as NONE
 from .base import NUMBER as NUMBER
+from .base import PATH as PATH
 from .base import PathFile as PathFile
 from .base import RegexPattern as RegexPattern
 from .base import SET as SET
@@ -66,9 +69,10 @@ global_patterns().update(
         tuple: TUPLE,
         set: SET,
         dict: DICT,
+        Path: PATH,
+        "file": PathFile,
     }
 )
-global_patterns().set(PathFile)
 
 
-global_patterns().sets([STRING, INTEGER, FLOAT, BOOLEAN, DATETIME])
+global_patterns().sets([BYTES, STRING, INTEGER, FLOAT, BOOLEAN, DATETIME])
