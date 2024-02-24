@@ -211,3 +211,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# PDM
+.pdm-python
+
+# PyCharm
+.idea/

@@ -387,4 +387,5 @@ class BasePattern(Generic[TOrigin, TInput]):
             f"unsupported operand type(s) for |: 'BasePattern' and '{other.__class__.__name__}'"
         )
 
+
 __all__ = ["MatchMode", "BasePattern", "ValidateResult", "TOrigin", "ResultFlag"]

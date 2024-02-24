@@ -1,25 +1,23 @@
 from typing import Union
 from nepattern import *
 
+
 def test_type():
     import re
 
     assert isinstance(re.compile(""), TPattern)  # type: ignore
 
+
 def test_basic():
     from datetime import datetime
 
     assert STRING.validate("123").success
-    assert STRING.validate(123).value() == "123"
-    assert STRING.validate(123.456).value() == "123.456"
     assert STRING.validate(b"123").value() == "123"
-    assert STRING.validate([]).failed
+    assert STRING.validate(123).failed
 
     assert BYTES.validate(b"123").success
     assert BYTES.validate("123").value() == b"123"
-    assert BYTES.validate(123).value() == b"123"
-    assert BYTES.validate(123.456).value() == b"123.456"
-    assert BYTES.validate([]).failed
+    assert BYTES.validate(123).failed
 
     assert INTEGER.validate(123).success
     assert INTEGER.validate("123").value() == 123
@@ -38,14 +36,26 @@ def test_basic():
     assert FLOAT.validate("aaa").failed
     assert FLOAT.validate([]).failed
 
-    assert BOOLEAN.validate(True).value() == True
-    assert BOOLEAN.validate(False).value() == False
-    assert BOOLEAN.validate("True").value() == True
-    assert BOOLEAN.validate("False").value() == False
-    assert BOOLEAN.validate("true").value() == True
-    assert BOOLEAN.validate("false").value() == False
-    assert BOOLEAN.validate("1").value() == True
-    assert BOOLEAN.validate([]).failed
+    assert BOOLEAN.validate(True).value() is True
+    assert BOOLEAN.validate(False).value() is False
+    assert BOOLEAN.validate("True").value() is True
+    assert BOOLEAN.validate("False").value() is False
+    assert BOOLEAN.validate("true").value() is True
+    assert BOOLEAN.validate("false").value() is False
+    assert BOOLEAN.validate("1").failed
+
+    assert WIDE_BOOLEAN.validate(True).value() is True
+    assert WIDE_BOOLEAN.validate(False).value() is False
+    assert WIDE_BOOLEAN.validate("True").value() is True
+    assert WIDE_BOOLEAN.validate("False").value() is False
+    assert WIDE_BOOLEAN.validate("true").value() is True
+    assert WIDE_BOOLEAN.validate("false").value() is False
+    assert WIDE_BOOLEAN.validate(1).value() is True
+    assert WIDE_BOOLEAN.validate(0).value() is False
+    assert WIDE_BOOLEAN.validate("yes").value() is True
+    assert WIDE_BOOLEAN.validate("no").value() is False
+    assert WIDE_BOOLEAN.validate("2").failed
+    assert WIDE_BOOLEAN.validate([]).failed
 
     assert HEX.validate(123).failed
     assert HEX.validate("0x123").value() == 0x123
@@ -60,6 +70,7 @@ def test_basic():
     assert PATH.validate("a/b/c").value().parts == ("a", "b", "c")
     assert PATH.validate(Path("a/b/c")).value() == Path("a/b/c")
     assert PATH.validate([]).failed
+
 
 def test_result():
     res = NUMBER.validate(123)
@@ -570,11 +581,13 @@ def test_value_operate():
     assert pat22_1.validate("123.0").failed
     assert pat22_1.validate([]).failed
 
+
 def test_eq():
     assert parser(123) == BasePattern.on(123)
     assert BasePattern.to(None) == NONE
     assert parser(BasePattern.of(int)) == BasePattern.of(int)
     assert parser(str) == STRING
+
 
 if __name__ == "__main__":
     import pytest

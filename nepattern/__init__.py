@@ -33,6 +33,7 @@ from .base import SwitchPattern as SwitchPattern
 from .base import TUPLE as TUPLE
 from .base import URL as URL
 from .base import UnionPattern as UnionPattern
+from .base import WIDE_BOOLEAN as WIDE_BOOLEAN
 from .context import Patterns as Patterns
 from .context import all_patterns as all_patterns
 from .context import create_local_patterns as create_local_patterns
