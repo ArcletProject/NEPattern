@@ -578,11 +578,16 @@ def test_eq():
     assert parser(str) == STRING
 
 
-def test_pipe():
+def test_combine():
     pre = BasePattern(mode=MatchMode.VALUE_OPERATE, origin=str, converter=lambda _, x: x.replace(",", "_"))
-    pat23 = pipe(pre, INTEGER)
+    pat23 = combine(INTEGER, pre)
     assert pat23.validate("123,456").value() == 123456
     assert pat23.validate("1,000,000").value() == 1_000_000
+
+    pat23_1 = combine(INTEGER, alias="0~10", validators=[lambda x: 0 <= x <= 10])
+    assert pat23_1.validate(5).value() == 5
+    assert pat23_1.validate(11).failed
+    assert str(pat23_1) == "0~10"
 
 
 if __name__ == "__main__":

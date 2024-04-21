@@ -1,6 +1,6 @@
 [project]
 name = "nepattern"
-version = "0.6.5"
+version = "0.7.0"
 description = "a complex pattern, support typing"
 authors = [
     {name = "RF-Tar-Railt", email = "rf_tar_railt@qq.com"},
@@ -33,8 +33,8 @@ repository = "https://github.com/ArcletProject/NEPattern"
 
 [project.optional-dependencies]
 [build-system]
-requires = ["pdm-pep517>=1.0.0"]
-build-backend = "pdm.pep517.api"
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
 [tool]
 [tool.pdm]

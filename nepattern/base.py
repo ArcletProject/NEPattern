@@ -23,7 +23,7 @@ from typing import (
 
 from tarina import DateParser, Empty, lang
 
-from .core import BasePattern, MatchMode, ResultFlag, ValidateResult, _MATCHES, TInput, TOrigin, TMM
+from .core import BasePattern, MatchMode, ResultFlag, ValidateResult, _MATCHES, TMM
 from .exception import MatchFailed
 from .util import TPattern
 
@@ -186,7 +186,7 @@ class UnionPattern(BasePattern[Any, _T, Literal[MatchMode.KEEP]]):
 
     def match(self, input_: Any):
         if not input_:
-            text = None
+            input_ = None
         if input_ not in self.for_equal:
             for pat in self.for_validate:
                 if (res := pat.validate(input_)).success:
@@ -468,7 +468,7 @@ class CustomMatchPattern(BasePattern[TOrigin, TInput, Literal[MatchMode.TYPE_CON
         return isinstance(other, CustomMatchPattern) and self.__func__ == other.__func__
 
 
-NONE = CustomMatchPattern(type(None), lambda _, x: None, alias="none")  # pragma: no cover
+NONE = CustomMatchPattern(type(None), lambda _, __: None, alias="none")  # pragma: no cover
 
 
 @final
@@ -798,18 +798,30 @@ PathFile = BasePattern(
 )
 
 
-def pipe(previous: BasePattern[Any, Any, Literal[MatchMode.VALUE_OPERATE]], current: BasePattern[TOrigin, TInput, TMM]) -> BasePattern[TOrigin, TInput, TMM]:
+def combine(
+    current: BasePattern[TOrigin, TInput, TMM],
+    previous: BasePattern[Any, Any, Literal[MatchMode.VALUE_OPERATE]] | None = None,
+    alias: str | None = None,
+    validators: list[Callable[[TOrigin], bool]] | None = None,
+) -> BasePattern[TOrigin, TInput, TMM]:
     _new = current.copy()
-    _match = _new.match
+    if previous:
+        _match = _new.match
 
-    def match(self, input_):
-        return _match(previous.match(input_))
+        def match(self, input_):
+            return _match(previous.match(input_))
 
-    _new.match = match.__get__(_new)
+        _new.match = match.__get__(_new)
+    if alias:
+        _new.alias = alias
+        _new.refresh()
+    if validators:
+        _new.validators = validators
     return _new
 
 
-DelimiterInt = pipe(
+DelimiterInt = combine(
+    INTEGER,
     BasePattern(mode=MatchMode.VALUE_OPERATE, origin=str, converter=lambda _, x: x.replace(",", "_")),
-    INTEGER
+    "DelimInt",
 )

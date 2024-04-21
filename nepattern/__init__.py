@@ -9,6 +9,7 @@ from .base import AnyString as AnyString
 from .base import BOOLEAN as BOOLEAN
 from .base import BYTES as BYTES
 from .base import DATETIME as DATETIME
+from .base import DelimiterInt as DelimiterInt
 from .base import DICT as DICT
 from .base import DirectPattern as DirectPattern
 from .base import DirectTypePattern as DirectTypePattern
@@ -34,7 +35,7 @@ from .base import TUPLE as TUPLE
 from .base import URL as URL
 from .base import UnionPattern as UnionPattern
 from .base import WIDE_BOOLEAN as WIDE_BOOLEAN
-from .base import pipe as pipe
+from .base import combine as combine
 from .context import Patterns as Patterns
 from .context import all_patterns as all_patterns
 from .context import create_local_patterns as create_local_patterns
