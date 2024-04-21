@@ -8,7 +8,6 @@ from collections.abc import Sequence as ABCSeq
 from collections.abc import Set as ABCSet
 from contextlib import suppress
 from copy import deepcopy
-from functools import lru_cache
 import inspect
 from types import FunctionType, LambdaType, MethodType
 from typing import Any, ForwardRef, Literal, TypeVar, Union, runtime_checkable
@@ -71,7 +70,7 @@ def _typevar_parser(item: TypeVar):
 def _protocol_parser(item: type):
     if not getattr(item, "_is_runtime_protocol", True):  # pragma: no cover
         item = runtime_checkable(deepcopy(item))  # type: ignore
-    return BasePattern(mode=MatchMode.KEEP, origin=Any, alias=f"{item}", accepts=item)
+    return BasePattern(mode=MatchMode.KEEP, alias=f"{item}", accepts=item)
 
 
 def parser(item: Any, extra: str = "allow") -> BasePattern:
@@ -109,7 +108,7 @@ def parser(item: Any, extra: str = "allow") -> BasePattern:
         if "|" in item:
             names = item.split("|")
             return UnionPattern(all_patterns().get(i, i) for i in names if i)
-        return DirectPattern(item)
+        return DirectPattern(item, alias=f"'{item}'")
     if isinstance(item, RawStr):
         return DirectPattern(item.value, alias=f"'{item.value}'")
     if isinstance(item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)):  # Args[foo, [123, int]]
@@ -127,28 +126,4 @@ def parser(item: Any, extra: str = "allow") -> BasePattern:
     return BasePattern.of(item) if inspect.isclass(item) else BasePattern.on(item)
 
 
-class Bind:
-    __slots__ = ()
-
-    def __new__(cls, *args, **kwargs):  # pragma: no cover
-        raise TypeError("Type Bind cannot be instantiated.")
-
-    @classmethod
-    @lru_cache(maxsize=None)
-    def __class_getitem__(cls, params) -> BasePattern:
-        if not isinstance(params, tuple) or len(params) < 2:
-            raise TypeError("Bind[...] should be used with only two arguments (a type and an annotation).")
-        if not (
-            pattern := params[0] if isinstance(params[0], BasePattern) else all_patterns().get(params[0])
-        ):
-            raise ValueError("Bind[...] first argument should be a BasePattern.")
-        if not all(callable(i) or isinstance(i, str) for i in params[1:]):
-            raise TypeError("Bind[...] second argument should be a callable or str.")
-        pattern = deepcopy(pattern)
-        pattern.alias = al[0] if (al := [i for i in params[1:] if isinstance(i, str)]) else pattern.alias
-        pattern.refresh()
-        pattern.validators.extend(filter(callable, params[1:]))
-        return pattern
-
-
-__all__ = ["Bind", "parser"]
+__all__ = ["parser"]

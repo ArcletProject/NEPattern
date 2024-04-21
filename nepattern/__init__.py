@@ -34,6 +34,7 @@ from .base import TUPLE as TUPLE
 from .base import URL as URL
 from .base import UnionPattern as UnionPattern
 from .base import WIDE_BOOLEAN as WIDE_BOOLEAN
+from .base import pipe as pipe
 from .context import Patterns as Patterns
 from .context import all_patterns as all_patterns
 from .context import create_local_patterns as create_local_patterns
@@ -45,7 +46,6 @@ from .core import BasePattern as BasePattern
 from .core import MatchMode as MatchMode
 from .core import ValidateResult as ValidateResult
 from .exception import MatchFailed as MatchFailed
-from .main import Bind as Bind
 from .main import parser as parser
 from .util import RawStr as RawStr
 from .util import TPattern as TPattern

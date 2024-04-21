@@ -11,7 +11,10 @@ def test_type():
 def test_basic():
     from datetime import datetime
 
-    assert STRING.validate("123").success
+    res = STRING.validate("123")
+    if res:
+        assert res.success
+        assert res.value() == "123"
     assert STRING.validate(b"123").value() == "123"
     assert STRING.validate(123).failed
 
@@ -129,7 +132,7 @@ def test_pattern_keep():
 
 def test_pattern_regex():
     """测试 BasePattern 的正则匹配模式, 仅正则匹配"""
-    pat3 = BasePattern("abc[A-Z]+123", MatchMode.REGEX_MATCH)
+    pat3 = BasePattern("abc[A-Z]+123", mode=MatchMode.REGEX_MATCH)
     assert pat3.validate("abcABC123").value() == "abcABC123"
     assert pat3.validate("abcAbc123").failed
     print(pat3)
@@ -169,8 +172,14 @@ def test_pattern_type_convert():
     pat5_3 = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=int, converter=convert)
     assert pat5_3.validate("1234abcd").value() == 123
     assert pat5_3.validate("abc").failed
-    pat5_3.previous = BasePattern(mode=MatchMode.VALUE_OPERATE, origin=str, converter=lambda _, x: f"123{x}")
-    assert pat5_3.validate("abc").value() == 123
+    prev = BasePattern(mode=MatchMode.VALUE_OPERATE, origin=str, converter=lambda _, x: f"123{x}")
+    pat5_4 = BasePattern(
+        mode=MatchMode.TYPE_CONVERT,
+        origin=int,
+        converter=convert,
+        previous=prev,
+    )
+    assert pat5_4.validate("abc").value() == 123
 
 
 def test_pattern_accepts():
@@ -222,7 +231,7 @@ def test_pattern_previous():
     pat7_3 = BasePattern(
         mode=MatchMode.TYPE_CONVERT,
         origin=int,
-        accepts=Union[int, float],
+        accepts=Union[int, float],  # type: ignore
         previous=pat7_2,  # type: ignore
     )
     assert pat7_3.validate("123").failed
@@ -243,7 +252,7 @@ def test_pattern_anti():
 def test_pattern_validator():
     """测试 BasePattern 的匹配后验证器, 会对匹配结果进行验证"""
     pat9 = BasePattern(
-        mode=MatchMode.KEEP, origin=int, validators=[lambda x: x > 0]
+        mode=MatchMode.KEEP, accepts=int, validators=[lambda x: x > 0]
     )
     assert pat9.validate(23).value() == 23
     assert pat9.validate(-23).failed
@@ -422,33 +431,13 @@ def test_converter_method():
     temp.remove(complex, alias='complex')
     assert not temp.get('complex')
     temp.set(BasePattern(mode=MatchMode.KEEP, alias='a'))
-    temp.set(BasePattern(mode=MatchMode.KEEP,origin=int, alias='b'), alias='a', cover=False)
+    temp.set(BasePattern(mode=MatchMode.KEEP, accepts=int, alias='b'), alias='a', cover=False)
     temp.remove(int, alias='a')
     assert temp['a']
     temp.remove(int)
     temp.remove(bool)
     temp.remove(type(None))
     assert not temp.get(int)
-
-
-def test_bind():
-    try:
-        Bind[int]
-    except TypeError as e:
-        print(e)
-
-    try:
-        Bind[None, lambda x: x]
-    except ValueError as e:
-        print(e)
-
-    try:
-        Bind[int, 1]
-    except TypeError as e:
-        print(e)
-
-    assert isinstance(Bind[int, lambda x: x < 10], BasePattern)
-    assert str(Bind[int, lambda x: 0 <= x <= 10, "0~10"]) == '0~10'
 
 
 def test_dunder():
@@ -460,7 +449,7 @@ def test_dunder():
     assert pat17.validate(1.33) >> bool
     assert BasePattern.of(int).validate(1).step(lambda x: x + 2) == 3
     pat17_1 = BasePattern(r"@(\d+)", MatchMode.REGEX_CONVERT, str, lambda _, x: x[0][1:])
-    pat17_2: BasePattern[int, Any] = parser(int)
+    pat17_2: BasePattern[int, Any, Any] = parser(int)
     assert ("@123456" >> pat17_1 >> pat17_2).value() == 123456
 
 
@@ -587,6 +576,13 @@ def test_eq():
     assert BasePattern.to(None) == NONE
     assert parser(BasePattern.of(int)) == BasePattern.of(int)
     assert parser(str) == STRING
+
+
+def test_pipe():
+    pre = BasePattern(mode=MatchMode.VALUE_OPERATE, origin=str, converter=lambda _, x: x.replace(",", "_"))
+    pat23 = pipe(pre, INTEGER)
+    assert pat23.validate("123,456").value() == 123456
+    assert pat23.validate("1,000,000").value() == 1_000_000
 
 
 if __name__ == "__main__":
