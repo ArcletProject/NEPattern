@@ -504,7 +504,7 @@ AnyString = AnyStrPattern()
 
 
 @final
-class StrPattern(BasePattern[str, str | bytes | bytearray, Literal[MatchMode.TYPE_CONVERT]]):
+class StrPattern(BasePattern[str, Union[str, bytes, bytearray], Literal[MatchMode.TYPE_CONVERT]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=str, accepts=Union[str, bytes, bytearray], alias="str")
 
@@ -526,7 +526,7 @@ STRING = StrPattern()
 
 
 @final
-class BytesPattern(BasePattern[bytes, str | bytes | bytearray, Literal[MatchMode.TYPE_CONVERT]]):
+class BytesPattern(BasePattern[bytes, Union[str, bytes, bytearray], Literal[MatchMode.TYPE_CONVERT]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=bytes, accepts=Union[str, bytes, bytearray], alias="bytes")
 
@@ -624,7 +624,7 @@ NUMBER = NumberPattern()
 
 
 @final
-class BoolPattern(BasePattern[bool, bool | str | bytes, Literal[MatchMode.TYPE_CONVERT]]):
+class BoolPattern(BasePattern[bool, Union[str, bytes, bool], Literal[MatchMode.TYPE_CONVERT]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=bool, alias="bool")
 
