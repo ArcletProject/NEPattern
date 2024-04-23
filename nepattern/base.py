@@ -376,7 +376,7 @@ class SwitchPattern(BasePattern[_TCase, _TSwtich, Literal[MatchMode.TYPE_CONVERT
 class ForwardRefPattern(BasePattern[Any, Any, Literal[MatchMode.TYPE_CONVERT]]):
     def __init__(self, ref: ForwardRef):
         self.ref = ref
-        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Any, alias=ref.__forward_arg__)
+        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Any, converter=lambda _, x: eval(x), alias=ref.__forward_arg__)
 
     def match(self, input_: Any):
         if isinstance(input_, str) and input_ == self.ref.__forward_arg__:

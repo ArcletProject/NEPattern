@@ -91,8 +91,8 @@ def parser(item: Any, extra: str = "allow") -> BasePattern:
             raise TypeError(f"{item} can only accept 1 or 2 argument")
         anno = list(sig.parameters.values())[-1].annotation
         return BasePattern(
-            accepts=Any if anno == inspect.Signature.empty else anno,
-            origin=(Any if sig.return_annotation == inspect.Signature.empty else sig.return_annotation),
+            accepts=Any if anno == inspect.Signature.empty else anno,  # type: ignore
+            origin=(Any if sig.return_annotation == inspect.Signature.empty else sig.return_annotation),  # type: ignore
             converter=item if len(sig.parameters) == 2 else lambda _, x: item(x),
             mode=MatchMode.TYPE_CONVERT,
         )

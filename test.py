@@ -176,6 +176,7 @@ def test_pattern_type_convert():
     pat5_4 = BasePattern(
         mode=MatchMode.TYPE_CONVERT,
         origin=int,
+        accepts=str,
         converter=convert,
         previous=prev,
     )
