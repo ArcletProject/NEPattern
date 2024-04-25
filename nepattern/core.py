@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from enum import Enum, IntEnum
 import re
-from typing import Any, Callable, Generic, Literal, TypeVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Generic, Literal, TypeVar
 from typing_extensions import Self, get_args, get_origin
 
 from tarina import Empty, generic_isinstance
@@ -126,7 +126,7 @@ def _keep_no_previous(self: BasePattern[Any, Any, Literal[MatchMode.KEEP]], inpu
 def _keep_previous(self: BasePattern[Any, Any, Literal[MatchMode.KEEP]], input_: Any) -> Any:
     if TYPE_CHECKING:
         assert self.previous
-    if self.accept(input_):    
+    if self.accept(input_):
         input_ = self.previous.match(input_)
     elif not self.accept(input_ := self.previous.match(input_)):
         raise MatchFailed(
@@ -158,7 +158,9 @@ def _regex_match_no_previous(self: BasePattern[str, str, Literal[MatchMode.REGEX
 def _regex_match_type(self: BasePattern[str, str, Literal[MatchMode.REGEX_MATCH]], input_: Any) -> str:
     if TYPE_CHECKING:
         assert self.previous
-    if not isinstance(input_, str) and not isinstance(input_ := self.previous.match(input_), str):  # pragma: no cover
+    if not isinstance(input_, str) and not isinstance(
+        input_ := self.previous.match(input_), str
+    ):  # pragma: no cover
         raise MatchFailed(
             lang.require("nepattern", "type_error").format(
                 type=input_.__class__, target=input_, expected=self.alias
@@ -192,7 +194,9 @@ def select_regex_match(self: BasePattern[Any, Any, Literal[MatchMode.REGEX_MATCH
     return _regex_match_no_previous
 
 
-def _regex_convert_no_previous_any(self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any) -> TOrigin:
+def _regex_convert_no_previous_any(
+    self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any
+) -> TOrigin:
     if not isinstance(input_, str):
         raise MatchFailed(
             lang.require("nepattern", "type_error").format(
@@ -205,7 +209,9 @@ def _regex_convert_no_previous_any(self: BasePattern[TOrigin, str | TOrigin, Lit
     raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
 
 
-def _regex_convert_no_previous_other(self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any) -> TOrigin:
+def _regex_convert_no_previous_other(
+    self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any
+) -> TOrigin:
     if generic_isinstance(input_, self.origin):
         return input_  # type: ignore
     if not isinstance(input_, str):
@@ -220,7 +226,9 @@ def _regex_convert_no_previous_other(self: BasePattern[TOrigin, str | TOrigin, L
     raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
 
 
-def _regex_convert_any_type(self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any) -> TOrigin:
+def _regex_convert_any_type(
+    self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     if not isinstance(input_, str) and not isinstance(input_ := self.previous.match(input_), str):
@@ -235,7 +243,9 @@ def _regex_convert_any_type(self: BasePattern[TOrigin, str | TOrigin, Literal[Ma
     raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
 
 
-def _regex_convert_any_value(self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any) -> TOrigin:
+def _regex_convert_any_value(
+    self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     if not isinstance(input_, str):
@@ -251,7 +261,9 @@ def _regex_convert_any_value(self: BasePattern[TOrigin, str | TOrigin, Literal[M
     raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
 
 
-def _regex_convert_value(self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any) -> TOrigin:
+def _regex_convert_value(
+    self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     input_ = self.previous.match(input_)
@@ -269,7 +281,9 @@ def _regex_convert_value(self: BasePattern[TOrigin, str | TOrigin, Literal[Match
     raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected=self.alias))
 
 
-def _regex_convert_type(self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any) -> TOrigin:
+def _regex_convert_type(
+    self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     if generic_isinstance(input_, self.origin):
@@ -290,7 +304,11 @@ def select_regex_convert(self: BasePattern[Any, Any, Literal[MatchMode.REGEX_CON
     if self.origin is Any or self.origin is str:
         if not self.previous:
             return _regex_convert_no_previous_any
-        return _regex_convert_any_value if self.previous.mode == MatchMode.VALUE_OPERATE else _regex_convert_any_type
+        return (
+            _regex_convert_any_value
+            if self.previous.mode == MatchMode.VALUE_OPERATE
+            else _regex_convert_any_type
+        )
     if not self.previous:
         return _regex_convert_no_previous_other
     if self.previous.mode == MatchMode.VALUE_OPERATE:
@@ -298,7 +316,9 @@ def select_regex_convert(self: BasePattern[Any, Any, Literal[MatchMode.REGEX_CON
     return _regex_convert_type
 
 
-def _type_convert_no_previous_no_accepts_any(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_no_previous_no_accepts_any(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if (res := self.converter(self, input_)) is None:
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
@@ -306,7 +326,9 @@ def _type_convert_no_previous_no_accepts_any(self: BasePattern[TOrigin, Any, Lit
     return res  # type: ignore
 
 
-def _type_convert_no_previous_no_accepts_other(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_no_previous_no_accepts_other(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if generic_isinstance(input_, self.origin):
         return input_
     if (res := self.converter(self, input_)) is None:
@@ -316,7 +338,9 @@ def _type_convert_no_previous_no_accepts_other(self: BasePattern[TOrigin, Any, L
     return res  # type: ignore
 
 
-def _type_convert_no_previous_accepts_any(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_no_previous_accepts_any(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if not self.accept(input_):
         raise MatchFailed(
             lang.require("nepattern", "type_error").format(
@@ -330,7 +354,9 @@ def _type_convert_no_previous_accepts_any(self: BasePattern[TOrigin, Any, Litera
     return res  # type: ignore
 
 
-def _type_convert_no_previous_accepts_other(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_no_previous_accepts_other(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if not self.accept(input_):
         raise MatchFailed(
             lang.require("nepattern", "type_error").format(
@@ -346,29 +372,39 @@ def _type_convert_no_previous_accepts_other(self: BasePattern[TOrigin, Any, Lite
     return res  # type: ignore
 
 
-def _type_convert_type_no_accepts_any(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_type_no_accepts_any(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
-    if (res := self.converter(self, input_)) is None and (res := self.converter(self, self.previous.match(input_))) is None:
+    if (res := self.converter(self, input_)) is None and (
+        res := self.converter(self, self.previous.match(input_))
+    ) is None:
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
         )
     return res  # type: ignore
 
 
-def _type_convert_type_no_accepts_other(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_type_no_accepts_other(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     if generic_isinstance(input_, self.origin):
         return input_
-    if (res := self.converter(self, input_)) is None and (res := self.converter(self, self.previous.match(input_))) is None:
+    if (res := self.converter(self, input_)) is None and (
+        res := self.converter(self, self.previous.match(input_))
+    ) is None:
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
         )
     return res  # type: ignore
 
 
-def _type_convert_type_accepts_any(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_type_accepts_any(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     if not self.accept(input_) and not self.accept(input_ := self.previous.match(input_)):
@@ -377,14 +413,18 @@ def _type_convert_type_accepts_any(self: BasePattern[TOrigin, Any, Literal[Match
                 type=input_.__class__, target=input_, expected=self.alias
             )
         )
-    if (res := self.converter(self, input_)) is None and (res := self.converter(self, self.previous.match(input_))) is None:
+    if (res := self.converter(self, input_)) is None and (
+        res := self.converter(self, self.previous.match(input_))
+    ) is None:
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
         )
     return res  # type: ignore
 
 
-def _type_convert_type_accepts_other(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_type_accepts_other(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     if not self.accept(input_) and not self.accept(input_ := self.previous.match(input_)):
@@ -395,14 +435,18 @@ def _type_convert_type_accepts_other(self: BasePattern[TOrigin, Any, Literal[Mat
         )
     if generic_isinstance(input_, self.origin):
         return input_
-    if (res := self.converter(self, input_)) is None and (res := self.converter(self, self.previous.match(input_))) is None:
+    if (res := self.converter(self, input_)) is None and (
+        res := self.converter(self, self.previous.match(input_))
+    ) is None:
         raise MatchFailed(
             lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
         )
     return res  # type: ignore
 
 
-def _type_convert_value_no_accepts_any(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_value_no_accepts_any(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     input_ = self.previous.match(input_)
@@ -413,7 +457,9 @@ def _type_convert_value_no_accepts_any(self: BasePattern[TOrigin, Any, Literal[M
     return res  # type: ignore
 
 
-def _type_convert_value_no_accepts_other(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_value_no_accepts_other(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     input_ = self.previous.match(input_)
@@ -426,7 +472,9 @@ def _type_convert_value_no_accepts_other(self: BasePattern[TOrigin, Any, Literal
     return res  # type: ignore
 
 
-def _type_convert_value_accepts_any(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_value_accepts_any(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     if self.accept(input_):
@@ -444,7 +492,9 @@ def _type_convert_value_accepts_any(self: BasePattern[TOrigin, Any, Literal[Matc
     return res  # type: ignore
 
 
-def _type_convert_value_accepts_other(self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any) -> TOrigin:
+def _type_convert_value_accepts_other(
+    self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     if self.accept(input_):
@@ -482,7 +532,9 @@ def select_type_convert(self: BasePattern[Any, Any, Literal[MatchMode.TYPE_CONVE
     return _type_convert_value_no_accepts_other if self.previous else _type_convert_type_no_accepts_other
 
 
-def _value_operate_no_previous(self: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], input_: Any) -> TOrigin:
+def _value_operate_no_previous(
+    self: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], input_: Any
+) -> TOrigin:
     if not generic_isinstance(input_, self.origin):
         raise MatchFailed(
             lang.require("nepattern", "type_error").format(
@@ -496,10 +548,14 @@ def _value_operate_no_previous(self: BasePattern[TOrigin, TOrigin, Literal[Match
     return res  # type: ignore
 
 
-def _value_operate_type(self: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], input_: Any) -> TOrigin:
+def _value_operate_type(
+    self: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
-    if not generic_isinstance(input_, self.origin) and not generic_isinstance(input_ := self.previous.match(input_), self.origin):
+    if not generic_isinstance(input_, self.origin) and not generic_isinstance(
+        input_ := self.previous.match(input_), self.origin
+    ):
         raise MatchFailed(
             lang.require("nepattern", "type_error").format(
                 type=input_.__class__, target=input_, expected=self.alias
@@ -512,7 +568,9 @@ def _value_operate_type(self: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VA
     return res  # type: ignore
 
 
-def _value_operate_value(self: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], input_: Any) -> TOrigin:
+def _value_operate_value(
+    self: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], input_: Any
+) -> TOrigin:
     if TYPE_CHECKING:
         assert self.previous
     if not generic_isinstance(input_, self.origin):
@@ -535,6 +593,7 @@ def select_value_operate(self: BasePattern[Any, Any, Literal[MatchMode.VALUE_OPE
             return _value_operate_type
         return _value_operate_value
     return _value_operate_no_previous
+
 
 _MATCHES = {
     MatchMode.KEEP: select_keep_match,
@@ -591,7 +650,9 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
             self.regex_pattern = re.compile("")
         else:
             if pattern.startswith("^") or pattern.endswith("$"):
-                raise ValueError(lang.require("nepattern", "pattern_head_or_tail_error").format(target=pattern))
+                raise ValueError(
+                    lang.require("nepattern", "pattern_head_or_tail_error").format(target=pattern)
+                )
             self.pattern = pattern
             self.regex_pattern = re.compile(f"^{pattern}$")
             self.mode = MatchMode(mode or MatchMode.REGEX_MATCH)
@@ -638,7 +699,9 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         self._hash = self.__calc_hash__()
 
     def __calc_hash__(self):
-        return hash((self._repr, self.origin, self.mode, self.alias, self.previous, self._accepts, self.pattern))
+        return hash(
+            (self._repr, self.origin, self.mode, self.alias, self.previous, self._accepts, self.pattern)
+        )
 
     def __calc_repr__(self):
         if self.mode == MatchMode.KEEP:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from enum import Enum
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 import re
 import sys
@@ -11,6 +11,7 @@ from typing import (
     Callable,
     Dict,
     ForwardRef,
+    Generic,
     Iterable,
     Literal,
     Match,
@@ -18,12 +19,12 @@ from typing import (
     Union,
     cast,
     final,
-    overload, Generic,
+    overload,
 )
 
 from tarina import DateParser, Empty, lang
 
-from .core import BasePattern, MatchMode, ResultFlag, ValidateResult, _MATCHES, TMM
+from .core import _MATCHES, TMM, BasePattern, MatchMode, ResultFlag, ValidateResult
 from .exception import MatchFailed
 from .util import TPattern
 
@@ -35,8 +36,6 @@ _T1 = TypeVar("_T1")
 
 class DirectPattern(BasePattern[TOrigin, TOrigin, Literal[MatchMode.KEEP]]):
     """直接判断"""
-
-    __slots__ = ("target",)
 
     def __init__(self, target: TOrigin, alias: str | None = None):
         self.target = target
@@ -50,41 +49,38 @@ class DirectPattern(BasePattern[TOrigin, TOrigin, Literal[MatchMode.KEEP]]):
         return input_
 
     @overload
-    def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
-        ...
+    def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
 
     @overload
-    def validate(self, input_: _T) -> ValidateResult[_T, Literal[ResultFlag.ERROR]]:
-        ...
+    def validate(self, input_: _T) -> ValidateResult[_T, Literal[ResultFlag.ERROR]]: ...
 
     @overload
-    def validate(self, input_: TOrigin, default: Any) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
-        ...
+    def validate(
+        self, input_: TOrigin, default: Any
+    ) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
 
     @overload
     def validate(
         self, input_: Any, default: TDefault
-    ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
-        ...
+    ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]: ...
 
     def validate(self, input_: Any, default: Union[TDefault, Empty] = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
-        if input_ == self.target:
-            return ValidateResult(input_, flag=ResultFlag.VALID)
-        e = MatchFailed(
-            lang.require("nepattern", "content_error").format(target=input_, expected=self.target)
-        )
-        if default is Empty:
-            return ValidateResult(error=e, flag=ResultFlag.ERROR)
-        return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
+        try:
+            return ValidateResult(self.match(input_), flag=ResultFlag.VALID)
+        except MatchFailed as e:
+            if default is Empty:
+                return ValidateResult(error=e, flag=ResultFlag.ERROR)
+            return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
 
     def __calc_eq__(self, other):  # pragma: no cover
         return isinstance(other, DirectPattern) and self.target == other.target
+    
+    def copy(self):
+        return DirectPattern(self.target, self.alias)
 
 
 class DirectTypePattern(BasePattern[TOrigin, TOrigin, Literal[MatchMode.KEEP]]):
     """直接类型判断"""
-
-    __slots__ = ("target",)
 
     def __init__(self, target: type[TOrigin], alias: str | None = None):
         self.target = target
@@ -100,37 +96,34 @@ class DirectTypePattern(BasePattern[TOrigin, TOrigin, Literal[MatchMode.KEEP]]):
         return input_
 
     @overload
-    def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
-        ...
+    def validate(self, input_: TOrigin) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
 
     @overload
-    def validate(self, input_: _T) -> ValidateResult[_T, Literal[ResultFlag.ERROR]]:
-        ...
+    def validate(self, input_: _T) -> ValidateResult[_T, Literal[ResultFlag.ERROR]]: ...
 
     @overload
-    def validate(self, input_: TOrigin, default: Any) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]:
-        ...
+    def validate(
+        self, input_: TOrigin, default: Any
+    ) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
 
     @overload
     def validate(
         self, input_: Any, default: TDefault
-    ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
-        ...
+    ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]: ...
 
     def validate(self, input_: Any, default: Union[TDefault, Empty] = Empty) -> ValidateResult[TOrigin | TDefault, ResultFlag]:  # type: ignore
-        if isinstance(input_, self.target):
-            return ValidateResult(input_, flag=ResultFlag.VALID)
-        e = MatchFailed(
-            lang.require("nepattern", "type_error").format(
-                type=input_.__class__, target=input_, expected=self.target
-            )
-        )
-        if default is Empty:
-            return ValidateResult(error=e, flag=ResultFlag.ERROR)
-        return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
+        try:
+            return ValidateResult(self.match(input_), flag=ResultFlag.VALID)
+        except MatchFailed as e:
+            if default is Empty:
+                return ValidateResult(error=e, flag=ResultFlag.ERROR)
+            return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
 
     def __calc_eq__(self, other):  # pragma: no cover
         return isinstance(other, DirectTypePattern) and self.target == other.target
+
+    def copy(self):
+        return DirectTypePattern(self.target, self.alias)
 
 
 class RegexPattern(BasePattern[Match[str], str, Literal[MatchMode.REGEX_MATCH]]):
@@ -156,6 +149,9 @@ class RegexPattern(BasePattern[Match[str], str, Literal[MatchMode.REGEX_MATCH]])
 
     def __calc_eq__(self, other):  # pragma: no cover
         return isinstance(other, RegexPattern) and self.pattern == other.pattern
+
+    def copy(self):
+        return RegexPattern(self.pattern, self.alias)
 
 
 class UnionPattern(BasePattern[Any, _T, Literal[MatchMode.KEEP]]):
@@ -195,7 +191,7 @@ class UnionPattern(BasePattern[Any, _T, Literal[MatchMode.KEEP]]):
                 lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
             )
         return input_
-    
+
     @classmethod
     def _(cls, *types: type[_T1]) -> UnionPattern[_T1]:
         from .main import parser
@@ -224,7 +220,9 @@ class IterMode(str, Enum):
 TIterMode = TypeVar("TIterMode", bound=IterMode)
 
 
-class SequencePattern(BasePattern[TSeq, Union[str, TSeq], Literal[MatchMode.REGEX_CONVERT]], Generic[TSeq, TIterMode]):
+class SequencePattern(
+    BasePattern[TSeq, Union[str, TSeq], Literal[MatchMode.REGEX_CONVERT]], Generic[TSeq, TIterMode]
+):
     """匹配列表或者元组或者集合"""
 
     base: BasePattern
@@ -286,10 +284,10 @@ class MappingPattern(
     itermode: TIterMode
 
     def __init__(
-        self, 
-        arg_key: BasePattern[TKey, Any, Any], 
+        self,
+        arg_key: BasePattern[TKey, Any, Any],
         arg_value: BasePattern[TVal, Any, Any],
-        mode: TIterMode = IterMode.ALL
+        mode: TIterMode = IterMode.ALL,
     ):
         self.key = arg_key
         self.value = arg_value
@@ -376,7 +374,9 @@ class SwitchPattern(BasePattern[_TCase, _TSwtich, Literal[MatchMode.TYPE_CONVERT
 class ForwardRefPattern(BasePattern[Any, Any, Literal[MatchMode.TYPE_CONVERT]]):
     def __init__(self, ref: ForwardRef):
         self.ref = ref
-        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=Any, converter=lambda _, x: eval(x), alias=ref.__forward_arg__)
+        super().__init__(
+            mode=MatchMode.TYPE_CONVERT, origin=Any, converter=lambda _, x: eval(x), alias=ref.__forward_arg__
+        )
 
     def match(self, input_: Any):
         if isinstance(input_, str) and input_ == self.ref.__forward_arg__:
@@ -404,22 +404,18 @@ class AntiPattern(BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]]):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=pattern.origin, alias=f"!{pattern}")
 
     @overload
-    def validate(self, input_: TOrigin) -> ValidateResult[Any, Literal[ResultFlag.ERROR]]:
-        ...
+    def validate(self, input_: TOrigin) -> ValidateResult[Any, Literal[ResultFlag.ERROR]]: ...
 
     @overload
-    def validate(self, input_: _T) -> ValidateResult[_T, Literal[ResultFlag.VALID]]:
-        ...
+    def validate(self, input_: _T) -> ValidateResult[_T, Literal[ResultFlag.VALID]]: ...
 
     @overload
     def validate(
         self, input_: TOrigin, default: TDefault
-    ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]:
-        ...
+    ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]: ...
 
     @overload
-    def validate(self, input_: _T, default: Any) -> ValidateResult[_T, Literal[ResultFlag.VALID]]:
-        ...
+    def validate(self, input_: _T, default: Any) -> ValidateResult[_T, Literal[ResultFlag.VALID]]: ...
 
     def validate(self, input_: _T, default: Union[TDefault, Empty] = Empty) -> ValidateResult[_T | TDefault, ResultFlag]:  # type: ignore
         """
@@ -506,7 +502,9 @@ AnyString = AnyStrPattern()
 @final
 class StrPattern(BasePattern[str, Union[str, bytes, bytearray], Literal[MatchMode.TYPE_CONVERT]]):
     def __init__(self):
-        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=str, accepts=Union[str, bytes, bytearray], alias="str")
+        super().__init__(
+            mode=MatchMode.TYPE_CONVERT, origin=str, accepts=Union[str, bytes, bytearray], alias="str"
+        )
 
     def match(self, input_: Any) -> str:
         if isinstance(input_, str):
@@ -514,8 +512,9 @@ class StrPattern(BasePattern[str, Union[str, bytes, bytearray], Literal[MatchMod
         elif isinstance(input_, (bytes, bytearray)):
             return input_.decode()
         raise MatchFailed(
-            lang.require("nepattern", "type_error")
-            .format(type=input_.__class__, target=input_, expected="str | bytes | bytearray")
+            lang.require("nepattern", "type_error").format(
+                type=input_.__class__, target=input_, expected="str | bytes | bytearray"
+            )
         )
 
     def __calc_eq__(self, other):  # pragma: no cover
@@ -528,7 +527,9 @@ STRING = StrPattern()
 @final
 class BytesPattern(BasePattern[bytes, Union[str, bytes, bytearray], Literal[MatchMode.TYPE_CONVERT]]):
     def __init__(self):
-        super().__init__(mode=MatchMode.TYPE_CONVERT, origin=bytes, accepts=Union[str, bytes, bytearray], alias="bytes")
+        super().__init__(
+            mode=MatchMode.TYPE_CONVERT, origin=bytes, accepts=Union[str, bytes, bytearray], alias="bytes"
+        )
 
     def match(self, input_: Any) -> bytes:
         if isinstance(input_, bytes):
@@ -639,9 +640,7 @@ class BoolPattern(BasePattern[bool, Union[str, bytes, bool], Literal[MatchMode.T
             return True
         if input_ == "false":
             return False
-        raise MatchFailed(
-            lang.require("nepattern", "content_error").format(target=input_, expected="bool")
-        )
+        raise MatchFailed(lang.require("nepattern", "content_error").format(target=input_, expected="bool"))
 
     def __calc_eq__(self, other):  # pragma: no cover
         return other.__class__ is BoolPattern
@@ -656,8 +655,8 @@ class WideBoolPattern(BasePattern[bool, Any, Literal[MatchMode.TYPE_CONVERT]]):
     def __init__(self):
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=bool, alias="bool")
 
-    BOOL_FALSE = {0, '0', 'off', 'f', 'false', 'n', 'no'}
-    BOOL_TRUE = {1, '1', 'on', 't', 'true', 'y', 'yes'}
+    BOOL_FALSE = {0, "0", "off", "f", "false", "n", "no"}
+    BOOL_TRUE = {1, "1", "on", "t", "true", "y", "yes"}
 
     def match(self, input_: Any) -> bool:
         if input_ is True or input_ is False:
@@ -676,8 +675,9 @@ class WideBoolPattern(BasePattern[bool, Any, Literal[MatchMode.TYPE_CONVERT]]):
             )
         except (ValueError, TypeError) as e:
             raise MatchFailed(
-                lang.require("nepattern", "type_error")
-                .format(type=input_.__class__, target=input_, expected="bool")
+                lang.require("nepattern", "type_error").format(
+                    type=input_.__class__, target=input_, expected="bool"
+                )
             ) from e
 
     def __calc_eq__(self, other):  # pragma: no cover
@@ -728,7 +728,7 @@ class HexPattern(BasePattern[int, str, Literal[MatchMode.TYPE_CONVERT]]):
             raise MatchFailed(
                 lang.require("nepattern", "content_error").format(target=input_, expected="hex")
             ) from e
-    
+
     def __calc_eq__(self, other):  # pragma: no cover
         return other.__class__ is HexPattern
 
@@ -800,7 +800,7 @@ PathFile = BasePattern(
 
 def combine(
     current: BasePattern[TOrigin, TInput, TMM],
-    previous: BasePattern[Any, Any, Literal[MatchMode.VALUE_OPERATE]] | None = None,
+    previous: BasePattern[TInput, Any, Any] | None = None,
     alias: str | None = None,
     validators: list[Callable[[TOrigin], bool]] | None = None,
 ) -> BasePattern[TOrigin, TInput, TMM]:

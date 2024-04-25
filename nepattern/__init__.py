@@ -1,5 +1,5 @@
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 from tarina import Empty as Empty  # noqa
 
@@ -9,8 +9,8 @@ from .base import AnyString as AnyString
 from .base import BOOLEAN as BOOLEAN
 from .base import BYTES as BYTES
 from .base import DATETIME as DATETIME
-from .base import DelimiterInt as DelimiterInt
 from .base import DICT as DICT
+from .base import DelimiterInt as DelimiterInt
 from .base import DirectPattern as DirectPattern
 from .base import DirectTypePattern as DirectTypePattern
 from .base import EMAIL as EMAIL
@@ -47,6 +47,18 @@ from .core import BasePattern as BasePattern
 from .core import MatchMode as MatchMode
 from .core import ValidateResult as ValidateResult
 from .exception import MatchFailed as MatchFailed
+from .func import Dot as Dot
+from .func import Filter as Filter
+from .func import GetItem as GetItem
+from .func import Index as Index
+from .func import Join as Join
+from .func import Lower as Lower
+from .func import Map as Map
+from .func import Reduce as Reduce
+from .func import Slice as Slice
+from .func import Step as Step
+from .func import Sum as Sum
+from .func import Upper as Upper
 from .main import parser as parser
 from .util import RawStr as RawStr
 from .util import TPattern as TPattern

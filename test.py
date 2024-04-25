@@ -1,4 +1,5 @@
 from typing import Union
+
 from nepattern import *
 
 
@@ -145,7 +146,12 @@ def test_pattern_regex():
 
 def test_pattern_regex_convert():
     """测试 BasePattern 的正则转换模式, 正则匹配成功后再进行类型转换"""
-    pat4 = BasePattern(r"\[at:(\d+)\]", MatchMode.REGEX_CONVERT, int, lambda _, x: res if (res := int(x[1])) < 1000000 else None)
+    pat4 = BasePattern(
+        r"\[at:(\d+)\]",
+        MatchMode.REGEX_CONVERT,
+        int,
+        lambda _, x: res if (res := int(x[1])) < 1000000 else None,
+    )
     assert pat4.validate("[at:123456]").value() == 123456
     assert pat4.validate("[at:abcdef]").failed
     assert pat4.validate(123456).value() == 123456
@@ -158,9 +164,7 @@ def test_pattern_type_convert():
     pat5 = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str)
     assert pat5.validate(123).value() == "123"
     assert pat5.validate([4, 5, 6]).value() == "[4, 5, 6]"
-    pat5_1 = BasePattern(
-        mode=MatchMode.TYPE_CONVERT, origin=int, converter=lambda self, x: self.origin(x)
-    )
+    pat5_1 = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=int, converter=lambda self, x: self.origin(x))
     assert pat5_1.validate("123").value() == 123
     assert pat5_1.validate("123.0").failed
     print(pat5)
@@ -200,12 +204,12 @@ def test_pattern_accepts():
     pat6_2 = BasePattern(mode=MatchMode.KEEP, accepts=bytes, addition_accepts=NUMBER)
     assert pat6_2.validate(123).value() == 123
     assert pat6_2.validate(123.123).value() == 123.123
-    assert pat6_2.validate(b'123').value() == b'123'
+    assert pat6_2.validate(b"123").value() == b"123"
     print(pat6_2)
     pat6_3 = BasePattern(mode=MatchMode.KEEP, addition_accepts=INTEGER | BOOLEAN)
     assert pat6_3.validate(123).value() == 123
     assert pat6_3.validate(True).value() is True
-    assert pat6_3.validate(b'123').value() == b'123'
+    assert pat6_3.validate(b"123").value() == b"123"
     assert pat6_3.validate([]).failed
 
 
@@ -216,9 +220,7 @@ def test_pattern_previous():
         def __repr__(self):
             return "123"
 
-    pat7 = BasePattern(
-        mode=MatchMode.TYPE_CONVERT, origin=str, converter=lambda _, x: f"abc[{x}]", accepts=A
-    )
+    pat7 = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str, converter=lambda _, x: f"abc[{x}]", accepts=A)
     pat7_1 = BasePattern(
         r"abc\[(\d+)\]",
         mode=MatchMode.REGEX_CONVERT,
@@ -249,12 +251,9 @@ def test_pattern_anti():
     assert pat8_1.validate("123").value() == "123"
 
 
-
 def test_pattern_validator():
     """测试 BasePattern 的匹配后验证器, 会对匹配结果进行验证"""
-    pat9 = BasePattern(
-        mode=MatchMode.KEEP, accepts=int, validators=[lambda x: x > 0]
-    )
+    pat9 = BasePattern(mode=MatchMode.KEEP, accepts=int, validators=[lambda x: x > 0])
     assert pat9.validate(23).value() == 23
     assert pat9.validate(-23).failed
     print(pat9)
@@ -268,7 +267,7 @@ def test_pattern_default():
 
 
 def test_parser():
-    from typing import Literal, Type, Protocol, TypeVar
+    from typing import Literal, Protocol, Type, TypeVar
     from typing_extensions import Annotated
 
     pat11 = parser(int)
@@ -283,7 +282,7 @@ def test_parser():
     assert isinstance(parser("a|b|c"), UnionPattern)
     assert isinstance(parser("re:a|b|c"), BasePattern)
     assert parser([1, 2, 3]).validate(1).success
-    assert parser({"a": 1, "b": 2}).validate('a').value() == 1
+    assert parser({"a": 1, "b": 2}).validate("a").value() == 1
 
     def _func(x: int):
         return x + 1
@@ -295,12 +294,12 @@ def test_parser():
 
     pat11_3 = parser(my_func)
     assert pat11_3.origin == str
-    assert pat11_3._accepts == (int, )
+    assert pat11_3._accepts == (int,)
 
-    assert parser(complex, extra='ignore') == ANY
+    assert parser(complex, extra="ignore") == ANY
 
     try:
-        parser(complex, extra='reject')
+        parser(complex, extra="reject")
     except TypeError as e:
         print(e)
 
@@ -310,8 +309,7 @@ def test_parser():
     assert pat11_5.alias == "normal number"
 
     class TestP(Protocol):
-        def __setitem__(self):
-            ...
+        def __setitem__(self): ...
 
     pat11_6 = parser(TestP)
     assert pat11_6.validate([1, 2, 3]).success
@@ -324,7 +322,7 @@ def test_parser():
 
 
 def test_union_pattern():
-    from typing import Union, Optional, List
+    from typing import List, Optional, Union
 
     pat12 = parser(Union[int, bool])
     assert pat12.validate(123).success
@@ -344,7 +342,7 @@ def test_union_pattern():
 
 
 def test_seq_pattern():
-    from typing import List, Tuple, Set
+    from typing import List, Set, Tuple
 
     pat13 = parser(List[int])
     pat13_1 = parser(Tuple[int, int])
@@ -377,15 +375,11 @@ def test_map_pattern():
     pat14_1 = parser(Dict[int, int])
     assert pat14_1.validate({"a": 1, "b": 2}).failed
     print(pat14)
-    pat14_2 = MappingPattern(
-        INTEGER, BOOLEAN, IterMode.PRE
-    )
+    pat14_2 = MappingPattern(INTEGER, BOOLEAN, IterMode.PRE)
     assert pat14_2.validate({1: True, 2: False}).success
     assert pat14_2.validate({1: True, 2: None}).value() == {1: True}
     assert pat14_2.validate({0: None, 1: True, 2: False}).failed
-    pat14_3 = MappingPattern(
-        INTEGER, BOOLEAN, IterMode.SUF
-    )
+    pat14_3 = MappingPattern(INTEGER, BOOLEAN, IterMode.SUF)
     assert pat14_3.validate({1: True, 2: False}).success
     assert pat14_3.validate({0: None, 1: False, 2: True}).value() == {1: False, 2: True}
     assert pat14_3.validate({0: False, 1: True, 2: None}).failed
@@ -421,20 +415,20 @@ def test_converters():
 def test_converter_method():
     temp = create_local_patterns("test", set_current=False)
     temp.set(BasePattern.of(complex))
-    assert temp['complex']
-    temp.set(BasePattern.of(complex), alias='abc')
-    assert temp['abc']
-    temp.set(BasePattern.of(int), alias='abc', cover=False)
-    assert isinstance(temp['abc'], UnionPattern)
-    temp.merge({'b': BasePattern.of(bool), 'c': BasePattern.of(str)})
-    assert temp['b']
-    assert temp['c']
-    temp.remove(complex, alias='complex')
-    assert not temp.get('complex')
-    temp.set(BasePattern(mode=MatchMode.KEEP, alias='a'))
-    temp.set(BasePattern(mode=MatchMode.KEEP, accepts=int, alias='b'), alias='a', cover=False)
-    temp.remove(int, alias='a')
-    assert temp['a']
+    assert temp["complex"]
+    temp.set(BasePattern.of(complex), alias="abc")
+    assert temp["abc"]
+    temp.set(BasePattern.of(int), alias="abc", cover=False)
+    assert isinstance(temp["abc"], UnionPattern)
+    temp.merge({"b": BasePattern.of(bool), "c": BasePattern.of(str)})
+    assert temp["b"]
+    assert temp["c"]
+    temp.remove(complex, alias="complex")
+    assert not temp.get("complex")
+    temp.set(BasePattern(mode=MatchMode.KEEP, alias="a"))
+    temp.set(BasePattern(mode=MatchMode.KEEP, accepts=int, alias="b"), alias="a", cover=False)
+    temp.remove(int, alias="a")
+    assert temp["a"]
     temp.remove(int)
     temp.remove(bool)
     temp.remove(type(None))
@@ -446,7 +440,7 @@ def test_dunder():
     assert ("test_float" @ pat17).alias == "test_float"
     assert pat17.validate(1.33).step(str) == pat17.validate(1.33) >> str == "1.33"
     assert (pat17.validate(1.33) >> 1).value() == 1.33
-    assert not '1.33' >> pat17
+    assert not "1.33" >> pat17
     assert pat17.validate(1.33) >> bool
     assert BasePattern.of(int).validate(1).step(lambda x: x + 2) == 3
     pat17_1 = BasePattern(r"@(\d+)", MatchMode.REGEX_CONVERT, str, lambda _, x: x[0][1:])
@@ -456,18 +450,20 @@ def test_dunder():
 
 def test_regex_pattern():
     from re import Match, compile
+
     pat18 = RegexPattern(r"((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)", "ghrepo")
     res = pat18.validate("https://github.com/ArcletProject/NEPattern").value()
     assert isinstance(res, Match)
-    assert res.groupdict() == {'owner': 'ArcletProject', 'repo': 'NEPattern'}
+    assert res.groupdict() == {"owner": "ArcletProject", "repo": "NEPattern"}
     assert pat18.validate(123).failed
     assert pat18.validate("www.bilibili.com").failed
     pat18_1 = parser(r"re:(\d+)")  # str starts with "re:" will convert to BasePattern instead of RegexPattern
-    assert pat18_1.validate("1234").value() == '1234'
+    assert pat18_1.validate("1234").value() == "1234"
     pat18_2 = parser(r"rep:(\d+)")  # str starts with "rep:" will convert to RegexPattern
-    assert pat18_2.validate("1234").value().groups() == ('1234',)  # type: ignore
+    assert pat18_2.validate("1234").value().groups() == ("1234",)  # type: ignore
     pat18_3 = parser(compile(r"(\d+)"))  # re.Pattern will convert to RegexPattern
-    assert pat18_3.validate("1234").value().groups() == ('1234',)
+    assert pat18_3.validate("1234").value().groups() == ("1234",)
+
 
 def test_switch_pattern():
     pat19 = SwitchPattern({"foo": 1, "bar": 2})
@@ -589,6 +585,71 @@ def test_combine():
     assert pat23_1.validate(5).value() == 5
     assert pat23_1.validate(11).failed
     assert str(pat23_1) == "0~10"
+
+
+def test_funcs():
+    from dataclasses import dataclass
+
+    pat = BasePattern(
+        mode=MatchMode.TYPE_CONVERT,
+        accepts=str,
+        origin=list[str],
+        alias="chars",
+        converter=lambda _, x: list(x),
+    )
+    assert pat.validate("abcde").value() == ["a", "b", "c", "d", "e"]
+
+    pat24 = Index(pat, 2)
+    assert pat24.validate("abcde").value() == "c"
+
+    pat24_1 = Slice(pat, 1, 3)
+    assert pat24_1.validate("abcde").value() == ["b", "c"]
+
+    pat24_2 = Map(pat, lambda x: x.upper(), "str.upper")
+    assert pat24_2.validate("abcde").value() == ["A", "B", "C", "D", "E"]
+
+    pat24_3 = Filter(pat, lambda x: x in "aeiou", "vowels")
+    assert pat24_3.validate("abcde").value() == ["a", "e"]
+
+    pat24_4 = Filter(Map(pat, lambda x: x.upper(), "str.upper"), lambda x: x in "AEIOU", "vowels")
+    assert pat24_4.validate("abcde").value() == ["A", "E"]
+
+    pat24_5 = Reduce(pat24_2, lambda x, y: x + y, funcname="add")
+    assert pat24_5.validate("abcde").value() == "ABCDE"
+
+    pat24_6 = Join(pat, sep="-")
+    assert pat24_6.validate("abcde").value() == "a-b-c-d-e"
+
+    pat24_7 = Upper(pat24_6)
+    assert pat24_7.validate("abcde").value() == "A-B-C-D-E"
+
+    pat24_8 = Lower(pat24_7)
+    assert pat24_8.validate("abcde").value() == "a-b-c-d-e"
+
+    pat24_9 = Sum(Map(pat, ord))
+    assert pat24_9.validate("abcde").value() == 495
+
+    pat24_10 = Step(pat, len)
+    assert pat24_10.validate("abcde").value() == 5
+
+    pat24_11 = Step(pat, lambda x: x.count("a"), funcname="count_a")
+    assert pat24_11.validate("abcde").value() == 1
+
+    @dataclass
+    class Test:
+        a: int
+        b: str
+
+    pat1 = BasePattern.of(Test)
+    obj = Test(123, "abc")
+    assert pat1.validate(obj).value() == obj
+
+    pat24_12 = Dot(pat1, int, "a")
+    assert pat24_12.validate(obj).value() == 123
+
+    pat2 = BasePattern.on({"a": 123, "b": "abc"})
+    pat24_13 = GetItem(pat2, int, "a")
+    assert pat24_13.validate({"a": 123, "b": "abc"}).value() == 123
 
 
 if __name__ == "__main__":

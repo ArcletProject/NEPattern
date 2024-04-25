@@ -12,12 +12,12 @@ if sys.version_info >= (3, 9):  # pragma: no cover
 else:  # pragma: no cover
     CGenericAlias: type = type(List[int])  # noqa
 
-if sys.version_info >= (3, 10):   # pragma: no cover
+if sys.version_info >= (3, 10):  # pragma: no cover
     from types import UnionType as CUnionType  # noqa
 else:  # pragma: no cover
     CUnionType: type = type(Union[int, str])  # noqa
 
-if sys.version_info >= (3, 11):   # pragma: no cover
+if sys.version_info >= (3, 11):  # pragma: no cover
     from re._compiler import compile as re_compile  # noqa
 else:  # pragma: no cover
     from sre_compile import compile as re_compile  # noqa

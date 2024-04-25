@@ -96,11 +96,15 @@ class ValidateResult(Generic[TVOrigin, TVRF]):
     @overload
     def __rshift__(self, other: Any) -> Self: ...
     @overload
-    def __bool__(self: ValidateResult[TVOrigin, Literal[ResultFlag.VALID]] | ValidateResult[TVOrigin, Literal[ResultFlag.DEFAULT]]) -> Literal[True]: ...
+    def __bool__(
+        self: (
+            ValidateResult[TVOrigin, Literal[ResultFlag.VALID]]
+            | ValidateResult[TVOrigin, Literal[ResultFlag.DEFAULT]]
+        )
+    ) -> Literal[True]: ...
     @overload
     def __bool__(self: ValidateResult[TVOrigin, Literal[ResultFlag.ERROR]]) -> Literal[False]: ...
     def __repr__(self): ...
-
 
 _MATCHES: dict[MatchMode, Callable[[Any], Callable[[Any, Any], Any]]] = {}
 
@@ -250,8 +254,13 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         pattern: str,
         mode: Literal[MatchMode.REGEX_CONVERT],
         origin: type[TOrigin],
-        converter: Callable[[BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], re.Match[str]], TOrigin | None]
-        | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], re.Match[str]],
+                TOrigin | None,
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         previous: None = None,
         accepts: type[str] = str,
@@ -264,9 +273,21 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         pattern: str,
         mode: Literal[MatchMode.REGEX_CONVERT],
         origin: type[TOrigin],
-        previous: BasePattern[str | TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]] | BasePattern[str, TInput1, Literal[MatchMode.TYPE_CONVERT]] | BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
-        converter: Callable[[BasePattern[TOrigin, str | TOrigin | TInput1, Literal[MatchMode.REGEX_CONVERT]], re.Match[str]], TOrigin | None]
-        | None = None,
+        previous: (
+            BasePattern[str | TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]]
+            | BasePattern[str, TInput1, Literal[MatchMode.TYPE_CONVERT]]
+            | BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]]
+        ),
+        converter: (
+            Callable[
+                [
+                    BasePattern[TOrigin, str | TOrigin | TInput1, Literal[MatchMode.REGEX_CONVERT]],
+                    re.Match[str],
+                ],
+                TOrigin | None,
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         accepts: type[str] = str,
         addition_accepts: None = None,
@@ -278,9 +299,18 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         pattern: str,
         mode: Literal[MatchMode.REGEX_CONVERT],
         origin: type[TOrigin],
-        previous: BasePattern[str | TOrigin, str | TOrigin, Literal[MatchMode.VALUE_OPERATE]] | BasePattern[str, str, Literal[MatchMode.VALUE_OPERATE]] | BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]],
-        converter: Callable[[BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], re.Match[str]], TOrigin | None]
-        | None = None,
+        previous: (
+            BasePattern[str | TOrigin, str | TOrigin, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[str, str, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]]
+        ),
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], re.Match[str]],
+                TOrigin | None,
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         accepts: type[str] = str,
         addition_accepts: None = None,
@@ -291,8 +321,10 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        converter: Callable[[BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], Any], TOrigin | None],
-        origin:  None = None,
+        converter: Callable[
+            [BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], Any], TOrigin | None
+        ],
+        origin: None = None,
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
@@ -305,8 +337,10 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
-        converter: Callable[[BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None],
-        origin:  None = None,
+        converter: Callable[
+            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+        ],
+        origin: None = None,
         alias: str | None = None,
         previous: None = None,
         addition_accepts: None = None,
@@ -318,8 +352,10 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         addition_accepts: BasePattern[Any, TInput1, Any],
-        converter: Callable[[BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None],
-        origin:  None = None,
+        converter: Callable[
+            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+        ],
+        origin: None = None,
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
@@ -332,8 +368,11 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
         addition_accepts: BasePattern[Any, TInput2, Any],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput2], TOrigin | None],
-        origin:  None = None,
+        converter: Callable[
+            [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput2],
+            TOrigin | None,
+        ],
+        origin: None = None,
         alias: str | None = None,
         previous: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
@@ -344,7 +383,9 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         origin: type[TOrigin],
-        converter: Callable[[BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], Any], TOrigin | None] | None = None,
+        converter: (
+            Callable[[BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], Any], TOrigin | None] | None
+        ) = None,
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
@@ -358,7 +399,12 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         origin: type[TOrigin],
         accepts: type[TInput1],
-        converter: Callable[[BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None] | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         previous: None = None,
         addition_accepts: None = None,
@@ -371,7 +417,12 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         origin: type[TOrigin],
         addition_accepts: BasePattern[Any, TInput1, Any],
-        converter: Callable[[BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None] | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
@@ -385,8 +436,13 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         origin: type[TOrigin],
         accepts: type[TInput1],
         addition_accepts: BasePattern[Any, TInput2, Any],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput2], TOrigin | None]
-        | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput2],
+                TOrigin | None,
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         previous: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
@@ -397,7 +453,9 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         previous: BasePattern[TInput1, Any, Literal[MatchMode.TYPE_CONVERT]],
-        converter: Callable[[BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], TInput1 | Any], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], TInput1 | Any], TOrigin | None
+        ],
         alias: str | None = None,
         origin: None = None,
         accepts: None = None,
@@ -411,7 +469,12 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         origin: type[TOrigin],
         previous: BasePattern[TInput1, Any, Literal[MatchMode.TYPE_CONVERT]],
-        converter: Callable[[BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], TInput1 | Any], TOrigin | None] | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], TInput1 | Any], TOrigin | None
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         accepts: None = None,
         addition_accepts: None = None,
@@ -423,7 +486,9 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
-        converter: Callable[[BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+        ],
         alias: str | None = None,
         origin: None = None,
         accepts: None = None,
@@ -436,8 +501,18 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         origin: type[TOrigin],
-        previous:  BasePattern[TOrigin | TInput1, TOrigin | TInput1, Literal[MatchMode.VALUE_OPERATE]] | BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]] | BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
-        converter: Callable[[BasePattern[TOrigin, TOrigin | TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None] | None = None,
+        previous: (
+            BasePattern[TOrigin | TInput1, TOrigin | TInput1, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]]
+        ),
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, TOrigin | TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1],
+                TOrigin | None,
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         accepts: None = None,
         addition_accepts: None = None,
@@ -450,7 +525,10 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
         previous: BasePattern[TInput4 | TInput1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
+            TOrigin | None,
+        ],
         alias: str | None = None,
         origin: None = None,
         addition_accepts: None = None,
@@ -464,7 +542,13 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         origin: type[TOrigin],
         accepts: type[TInput1],
         previous: BasePattern[TInput4 | TInput1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4], TOrigin | None] | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
+                TOrigin | None,
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         addition_accepts: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
@@ -476,9 +560,11 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
-        converter: Callable[[BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+        ],
         alias: str | None = None,
-        origin:  None = None,
+        origin: None = None,
         addition_accepts: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
     ): ...
@@ -490,7 +576,12 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         origin: type[TOrigin],
         accepts: type[TInput1],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
-        converter: Callable[[BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None] | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         addition_accepts: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
@@ -502,7 +593,10 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         addition_accepts: BasePattern[Any, TInput1, Any],
         previous: BasePattern[TInput4 | TInput1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
+            TOrigin | None,
+        ],
         alias: str | None = None,
         origin: None = None,
         accepts: None = None,
@@ -516,7 +610,13 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         origin: type[TOrigin],
         addition_accepts: BasePattern[Any, TInput1, Any],
         previous: BasePattern[TInput4 | TInput1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4], TOrigin | None] | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
+                TOrigin | None,
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         accepts: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
@@ -528,7 +628,9 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         addition_accepts: BasePattern[Any, TInput1, Any],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
-        converter: Callable[[BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+        ],
         alias: str | None = None,
         origin: None = None,
         accepts: None = None,
@@ -542,7 +644,12 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         origin: type[TOrigin],
         addition_accepts: BasePattern[Any, TInput1, Any],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
-        converter: Callable[[BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None] | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         accepts: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
@@ -553,9 +660,19 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
-        previous: BasePattern[TInput1 | TInput3, TInput2, Literal[MatchMode.TYPE_CONVERT]] | BasePattern[TInput1, TInput2, Literal[MatchMode.TYPE_CONVERT]] | BasePattern[TInput3, TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        previous: (
+            BasePattern[TInput1 | TInput3, TInput2, Literal[MatchMode.TYPE_CONVERT]]
+            | BasePattern[TInput1, TInput2, Literal[MatchMode.TYPE_CONVERT]]
+            | BasePattern[TInput3, TInput2, Literal[MatchMode.TYPE_CONVERT]]
+        ),
         addition_accepts: BasePattern[Any, TInput3, Any],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3], TOrigin | None],
+        converter: Callable[
+            [
+                BasePattern[TOrigin, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
+                TInput1 | TInput3,
+            ],
+            TOrigin | None,
+        ],
         alias: str | None = None,
         origin: None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
@@ -567,10 +684,22 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         origin: type[TOrigin],
         accepts: type[TInput1],
-        previous: BasePattern[TInput1 | TInput3, TInput2, Literal[MatchMode.TYPE_CONVERT]] | BasePattern[TInput1, TInput2, Literal[MatchMode.TYPE_CONVERT]] | BasePattern[TInput3, TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        previous: (
+            BasePattern[TInput1 | TInput3, TInput2, Literal[MatchMode.TYPE_CONVERT]]
+            | BasePattern[TInput1, TInput2, Literal[MatchMode.TYPE_CONVERT]]
+            | BasePattern[TInput3, TInput2, Literal[MatchMode.TYPE_CONVERT]]
+        ),
         addition_accepts: BasePattern[Any, TInput3, Any],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3], TOrigin | None]
-        | None = None,
+        converter: (
+            Callable[
+                [
+                    BasePattern[TOrigin, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
+                    TInput1 | TInput3,
+                ],
+                TOrigin | None,
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
     ): ...
@@ -580,9 +709,16 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
-        previous: BasePattern[TInput1 | TInput3, TInput1 | TInput3, Literal[MatchMode.VALUE_OPERATE]] | BasePattern[TInput3, TInput3, Literal[MatchMode.VALUE_OPERATE]] | BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
+        previous: (
+            BasePattern[TInput1 | TInput3, TInput1 | TInput3, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[TInput3, TInput3, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]]
+        ),
         addition_accepts: BasePattern[Any, TInput3, Any],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3],
+            TOrigin | None,
+        ],
         origin: None = None,
         alias: str | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
@@ -594,10 +730,19 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.TYPE_CONVERT],
         origin: type[TOrigin],
         accepts: type[TInput1],
-        previous: BasePattern[TInput1 | TInput3, TInput1 | TInput3, Literal[MatchMode.VALUE_OPERATE]] | BasePattern[TInput3, TInput3, Literal[MatchMode.VALUE_OPERATE]] | BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
+        previous: (
+            BasePattern[TInput1 | TInput3, TInput1 | TInput3, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[TInput3, TInput3, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]]
+        ),
         addition_accepts: BasePattern[Any, TInput3, Any],
-        converter: Callable[[BasePattern[TOrigin, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3], TOrigin | None]
-        | None = None,
+        converter: (
+            Callable[
+                [BasePattern[TOrigin, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3],
+                TOrigin | None,
+            ]
+            | None
+        ) = None,
         alias: str | None = None,
         validators: list[Callable[[TOrigin], bool]] | None = None,
     ): ...
@@ -607,7 +752,9 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         *,
         mode: Literal[MatchMode.VALUE_OPERATE],
         origin: type[TOrigin],
-        converter: Callable[[BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], TOrigin], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], TOrigin], TOrigin | None
+        ],
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
@@ -621,7 +768,26 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.VALUE_OPERATE],
         origin: type[TOrigin],
         previous: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
-        converter: Callable[[BasePattern[TOrigin, TOrigin | TInput1, Literal[MatchMode.VALUE_OPERATE]], TOrigin], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, TOrigin | TInput1, Literal[MatchMode.VALUE_OPERATE]], TOrigin],
+            TOrigin | None,
+        ],
+        alias: str | None = None,
+        accepts: None = None,
+        addition_accepts: None = None,
+        validators: list[Callable[[TOrigin], bool]] | None = None,
+    ): ...
+    @overload
+    def __init__(
+        self: BasePattern[TOrigin, TOrigin | TInput2, Literal[MatchMode.VALUE_OPERATE]],
+        *,
+        mode: Literal[MatchMode.VALUE_OPERATE],
+        origin: type[TOrigin],
+        previous: BasePattern[TOrigin, TOrigin | TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        converter: Callable[
+            [BasePattern[TOrigin, TOrigin | TInput2, Literal[MatchMode.VALUE_OPERATE]], TOrigin],
+            TOrigin | None,
+        ],
         alias: str | None = None,
         accepts: None = None,
         addition_accepts: None = None,
@@ -634,7 +800,9 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         mode: Literal[MatchMode.VALUE_OPERATE],
         origin: type[TOrigin],
         previous: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]],
-        converter: Callable[[BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], TOrigin], TOrigin | None],
+        converter: Callable[
+            [BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], TOrigin], TOrigin | None
+        ],
         alias: str | None = None,
         accepts: None = None,
         addition_accepts: None = None,
@@ -649,29 +817,47 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
     def __hash__(self): ...
     def __eq__(self, other): ...
     @staticmethod
-    def of(unit: type[TOrigin]) -> DirectTypePattern[TOrigin]:
+    def of(unit: type[TOrigin1]) -> DirectTypePattern[TOrigin1]:
         """提供 Type[DataUnit] 类型的构造方法"""
         ...
+
     @staticmethod
-    def on(obj: TOrigin) -> DirectPattern[TOrigin]:
+    def on(obj: TOrigin1) -> DirectPattern[TOrigin1]:
         """提供 DataUnit 类型的构造方法"""
         ...
+
     @staticmethod
     def to(content: Any) -> BasePattern:
         """便捷的使用 type_parser 的方法"""
         ...
+
     @overload
-    def validate(self: BasePattern[TOrigin, TInput, Literal[MatchMode.KEEP]], input_: TInput) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
+    def validate(
+        self: BasePattern[TOrigin, TInput, Literal[MatchMode.KEEP]], input_: TInput
+    ) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
     @overload
-    def validate(self: BasePattern[TOrigin, TInput, Literal[MatchMode.KEEP]], input_: T) -> ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
+    def validate(
+        self: BasePattern[TOrigin, TInput, Literal[MatchMode.KEEP]], input_: T
+    ) -> ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
     @overload
-    def validate(self: BasePattern[TOrigin, TInput, Literal[MatchMode.VALUE_OPERATE]], input_: TInput) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
+    def validate(
+        self: BasePattern[TOrigin, TInput, Literal[MatchMode.VALUE_OPERATE]], input_: TInput
+    ) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
     @overload
-    def validate(self: BasePattern[TOrigin, TInput, Literal[MatchMode.VALUE_OPERATE]], input_: T) -> ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
+    def validate(
+        self: BasePattern[TOrigin, TInput, Literal[MatchMode.VALUE_OPERATE]], input_: T
+    ) -> ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
     @overload
-    def validate(self: BasePattern[TOrigin, TInput, TMM], input_: TInput) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]] | ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]: ...
+    def validate(
+        self: BasePattern[TOrigin, TInput, TMM], input_: TInput
+    ) -> (
+        ValidateResult[TOrigin, Literal[ResultFlag.VALID]]
+        | ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]
+    ): ...
     @overload
-    def validate(self: BasePattern[TOrigin, TInput, TMM], input_: T) -> ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
+    def validate(
+        self: BasePattern[TOrigin, TInput, TMM], input_: T
+    ) -> ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
     @overload
     def validate(
         self: BasePattern[TOrigin, TInput, Literal[MatchMode.KEEP]], input_: TInput, default: Any
@@ -691,7 +877,10 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
     @overload
     def validate(
         self: BasePattern[TOrigin, TInput, TMM], input_: TInput, default: Any
-    ) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]] | ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]: ...
+    ) -> (
+        ValidateResult[TOrigin, Literal[ResultFlag.VALID]]
+        | ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]
+    ): ...
     @overload
     def validate(
         self: BasePattern[TOrigin, TInput, TMM], input_: Any, default: TDefault
@@ -703,4 +892,6 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
     ) -> ValidateResult[T, Literal[ResultFlag.VALID]] | ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
     def __rmatmul__(self, other) -> Self: ...
     def __matmul__(self, other) -> Self: ...
-    def __or__(self, other: BasePattern[TOrigin1, TInput1, Any]) -> BasePattern[TOrigin1 | TOrigin, TInput1 | TInput, TMM]: ...
+    def __or__(
+        self, other: BasePattern[TOrigin1, TInput1, Any]
+    ) -> BasePattern[TOrigin1 | TOrigin, TInput1 | TInput, TMM]: ...

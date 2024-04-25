@@ -6,7 +6,7 @@ from typing import final
 
 from tarina import Empty
 
-from .base import UnionPattern, NONE
+from .base import NONE, UnionPattern
 
 
 @final
