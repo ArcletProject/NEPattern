@@ -756,20 +756,20 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
             [BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]], TOrigin1], TOrigin1 | None
         ],
         alias: str | None = None,
-        previous: None = None,
+        previous: BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]] | None = None,
         accepts: None = None,
         addition_accepts: None = None,
         validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin1, TOrigin1 | TInput1, Literal[MatchMode.VALUE_OPERATE]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
         *,
         mode: Literal[MatchMode.VALUE_OPERATE],
         origin: type[TOrigin1],
         previous: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         converter: Callable[
-            [BasePattern[TOrigin1, TOrigin1 | TInput1, Literal[MatchMode.VALUE_OPERATE]], TOrigin1],
+            [BasePattern[TOrigin1, TInput1, Literal[MatchMode.VALUE_OPERATE]], TOrigin1],
             TOrigin1 | None,
         ],
         alias: str | None = None,
@@ -787,21 +787,6 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         converter: Callable[
             [BasePattern[TOrigin1, TOrigin1 | TInput2, Literal[MatchMode.VALUE_OPERATE]], TOrigin1],
             TOrigin1 | None,
-        ],
-        alias: str | None = None,
-        accepts: None = None,
-        addition_accepts: None = None,
-        validators: list[Callable[[TOrigin1], bool]] | None = None,
-    ): ...
-    @overload
-    def __init__(
-        self: BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]],
-        *,
-        mode: Literal[MatchMode.VALUE_OPERATE],
-        origin: type[TOrigin1],
-        previous: BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]],
-        converter: Callable[
-            [BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]], TOrigin1], TOrigin1 | None
         ],
         alias: str | None = None,
         accepts: None = None,

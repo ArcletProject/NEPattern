@@ -665,7 +665,7 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         if self.mode == MatchMode.TYPE_CONVERT:
             if not converter and (not origin or origin is Any):
                 raise ValueError(origin)
-            self.converter = converter or (lambda _, x: (get_origin(self.origin) or self.origin)(x))
+            self.converter = converter or (lambda _, x: (get_origin(self.origin) or self.origin)(x))  # type: ignore
         elif self.mode == MatchMode.VALUE_OPERATE:
             if not converter:
                 raise ValueError(converter)
