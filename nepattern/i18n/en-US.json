@@ -1,4 +1,5 @@
 {
+  "$schema": "./.lang.schema.json",
   "nepattern": {
     "type_error": "type {type} of parameter {target} is incorrect; expected {expected}",
     "content_error": "parameter {target} is incorrect; expected {expected}",

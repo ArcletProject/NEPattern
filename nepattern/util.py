@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import dataclasses
-from pathlib import Path
 import sys
 from typing import TYPE_CHECKING, List, Pattern, Union
 
-from tarina.lang import lang
+from .i18n import lang as lang
 
 if sys.version_info >= (3, 9):  # pragma: no cover
     from types import GenericAlias as CGenericAlias  # noqa
@@ -33,6 +32,3 @@ UnionType: type = type(Union[int, str])
 @dataclasses.dataclass
 class RawStr:
     value: str
-
-
-lang.load(Path(__file__).parent / "i18n")

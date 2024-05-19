@@ -1,3 +1,5 @@
 {
-  "default": "zh-CN"
+  "default": "zh-CN",
+  "frozen": [],
+  "require": []
 }

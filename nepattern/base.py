@@ -74,7 +74,7 @@ class DirectPattern(BasePattern[TOrigin, TOrigin, Literal[MatchMode.KEEP]]):
 
     def __calc_eq__(self, other):  # pragma: no cover
         return isinstance(other, DirectPattern) and self.target == other.target
-    
+
     def copy(self):
         return DirectPattern(self.target, self.alias)
 

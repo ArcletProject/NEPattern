@@ -1,4 +1,5 @@
 {
+  "$schema": "./.lang.schema.json",
   "nepattern": {
     "type_error": "参数 {target!r} 的类型 {type} 不正确, 其应该是 {expected!r}",
     "content_error": "参数 {target!r} 不正确, 其应该符合 {expected!r}",

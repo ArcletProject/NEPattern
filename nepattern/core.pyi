@@ -139,15 +139,15 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TInput, TInput, Literal[MatchMode.KEEP]],
+        self: BasePattern[TInput1, TInput1, Literal[MatchMode.KEEP]],
         *,
         mode: Literal[MatchMode.KEEP],
-        accepts: type[TInput],
+        accepts: type[TInput1],
         origin: Any = None,
         alias: str | None = None,
         previous: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TInput], bool]] | None = None,
+        validators: list[Callable[[TInput1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
@@ -250,14 +250,14 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]],
+        self: BasePattern[TOrigin1, str | TOrigin1, Literal[MatchMode.REGEX_CONVERT]],
         pattern: str,
         mode: Literal[MatchMode.REGEX_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         converter: (
             Callable[
-                [BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], re.Match[str]],
-                TOrigin | None,
+                [BasePattern[TOrigin1, str | TOrigin1, Literal[MatchMode.REGEX_CONVERT]], re.Match[str]],
+                TOrigin1 | None,
             ]
             | None
         ) = None,
@@ -265,398 +265,398 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         previous: None = None,
         accepts: type[str] = str,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, str | TOrigin | TInput1, Literal[MatchMode.REGEX_CONVERT]],
+        self: BasePattern[TOrigin1, str | TOrigin1 | TInput1, Literal[MatchMode.REGEX_CONVERT]],
         pattern: str,
         mode: Literal[MatchMode.REGEX_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         previous: (
-            BasePattern[str | TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]]
+            BasePattern[str | TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]]
             | BasePattern[str, TInput1, Literal[MatchMode.TYPE_CONVERT]]
-            | BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]]
+            | BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]]
         ),
         converter: (
             Callable[
                 [
-                    BasePattern[TOrigin, str | TOrigin | TInput1, Literal[MatchMode.REGEX_CONVERT]],
+                    BasePattern[TOrigin1, str | TOrigin1 | TInput1, Literal[MatchMode.REGEX_CONVERT]],
                     re.Match[str],
                 ],
-                TOrigin | None,
+                TOrigin1 | None,
             ]
             | None
         ) = None,
         alias: str | None = None,
         accepts: type[str] = str,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]],
+        self: BasePattern[TOrigin1, str | TOrigin1, Literal[MatchMode.REGEX_CONVERT]],
         pattern: str,
         mode: Literal[MatchMode.REGEX_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         previous: (
-            BasePattern[str | TOrigin, str | TOrigin, Literal[MatchMode.VALUE_OPERATE]]
+            BasePattern[str | TOrigin1, str | TOrigin1, Literal[MatchMode.VALUE_OPERATE]]
             | BasePattern[str, str, Literal[MatchMode.VALUE_OPERATE]]
-            | BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]]
         ),
         converter: (
             Callable[
-                [BasePattern[TOrigin, str | TOrigin, Literal[MatchMode.REGEX_CONVERT]], re.Match[str]],
-                TOrigin | None,
+                [BasePattern[TOrigin1, str | TOrigin1, Literal[MatchMode.REGEX_CONVERT]], re.Match[str]],
+                TOrigin1 | None,
             ]
             | None
         ) = None,
         alias: str | None = None,
         accepts: type[str] = str,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, Any, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         converter: Callable[
-            [BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], Any], TOrigin | None
+            [BasePattern[TOrigin1, Any, Literal[MatchMode.TYPE_CONVERT]], Any], TOrigin1 | None
         ],
         origin: None = None,
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
         converter: Callable[
-            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+            [BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin1 | None
         ],
         origin: None = None,
         alias: str | None = None,
         previous: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         addition_accepts: BasePattern[Any, TInput1, Any],
         converter: Callable[
-            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+            [BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin1 | None
         ],
         origin: None = None,
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
         addition_accepts: BasePattern[Any, TInput2, Any],
         converter: Callable[
-            [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput2],
-            TOrigin | None,
+            [BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput2],
+            TOrigin1 | None,
         ],
         origin: None = None,
         alias: str | None = None,
         previous: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, Any, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         converter: (
-            Callable[[BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], Any], TOrigin | None] | None
+            Callable[[BasePattern[TOrigin1, Any, Literal[MatchMode.TYPE_CONVERT]], Any], TOrigin1 | None] | None
         ) = None,
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         accepts: type[TInput1],
         converter: (
             Callable[
-                [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+                [BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin1 | None
             ]
             | None
         ) = None,
         alias: str | None = None,
         previous: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         addition_accepts: BasePattern[Any, TInput1, Any],
         converter: (
             Callable[
-                [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+                [BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin1 | None
             ]
             | None
         ) = None,
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         accepts: type[TInput1],
         addition_accepts: BasePattern[Any, TInput2, Any],
         converter: (
             Callable[
-                [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput2],
-                TOrigin | None,
+                [BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput2],
+                TOrigin1 | None,
             ]
             | None
         ) = None,
         alias: str | None = None,
         previous: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, Any, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         previous: BasePattern[TInput1, Any, Literal[MatchMode.TYPE_CONVERT]],
         converter: Callable[
-            [BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], TInput1 | Any], TOrigin | None
+            [BasePattern[TOrigin1, Any, Literal[MatchMode.TYPE_CONVERT]], TInput1 | Any], TOrigin1 | None
         ],
         alias: str | None = None,
         origin: None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, Any, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         previous: BasePattern[TInput1, Any, Literal[MatchMode.TYPE_CONVERT]],
         converter: (
             Callable[
-                [BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]], TInput1 | Any], TOrigin | None
+                [BasePattern[TOrigin1, Any, Literal[MatchMode.TYPE_CONVERT]], TInput1 | Any], TOrigin1 | None
             ]
             | None
         ) = None,
         alias: str | None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
         converter: Callable[
-            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+            [BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin1 | None
         ],
         alias: str | None = None,
         origin: None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TOrigin | TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TOrigin1 | TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         previous: (
-            BasePattern[TOrigin | TInput1, TOrigin | TInput1, Literal[MatchMode.VALUE_OPERATE]]
-            | BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]]
+            BasePattern[TOrigin1 | TInput1, TOrigin1 | TInput1, Literal[MatchMode.VALUE_OPERATE]]
+            | BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]]
             | BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]]
         ),
         converter: (
             Callable[
-                [BasePattern[TOrigin, TOrigin | TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1],
-                TOrigin | None,
+                [BasePattern[TOrigin1, TOrigin1 | TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1],
+                TOrigin1 | None,
             ]
             | None
         ) = None,
         alias: str | None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
         previous: BasePattern[TInput4 | TInput1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         converter: Callable[
-            [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
-            TOrigin | None,
+            [BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
+            TOrigin1 | None,
         ],
         alias: str | None = None,
         origin: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         accepts: type[TInput1],
         previous: BasePattern[TInput4 | TInput1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         converter: (
             Callable[
-                [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
-                TOrigin | None,
+                [BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
+                TOrigin1 | None,
             ]
             | None
         ) = None,
         alias: str | None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
         converter: Callable[
-            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+            [BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin1 | None
         ],
         alias: str | None = None,
         origin: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         accepts: type[TInput1],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
         converter: (
             Callable[
-                [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+                [BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin1 | None
             ]
             | None
         ) = None,
         alias: str | None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         addition_accepts: BasePattern[Any, TInput1, Any],
         previous: BasePattern[TInput4 | TInput1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         converter: Callable[
-            [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
-            TOrigin | None,
+            [BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
+            TOrigin1 | None,
         ],
         alias: str | None = None,
         origin: None = None,
         accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         addition_accepts: BasePattern[Any, TInput1, Any],
         previous: BasePattern[TInput4 | TInput1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         converter: (
             Callable[
-                [BasePattern[TOrigin, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
-                TOrigin | None,
+                [BasePattern[TOrigin1, TInput1 | TInput2, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput4],
+                TOrigin1 | None,
             ]
             | None
         ) = None,
         alias: str | None = None,
         accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         addition_accepts: BasePattern[Any, TInput1, Any],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
         converter: Callable[
-            [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+            [BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin1 | None
         ],
         alias: str | None = None,
         origin: None = None,
         accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         addition_accepts: BasePattern[Any, TInput1, Any],
         previous: BasePattern[TInput1, TInput1, Literal[MatchMode.VALUE_OPERATE]],
         converter: (
             Callable[
-                [BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin | None
+                [BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]], TInput1], TOrigin1 | None
             ]
             | None
         ) = None,
         alias: str | None = None,
         accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
@@ -668,21 +668,21 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         addition_accepts: BasePattern[Any, TInput3, Any],
         converter: Callable[
             [
-                BasePattern[TOrigin, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
+                BasePattern[TOrigin1, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
                 TInput1 | TInput3,
             ],
-            TOrigin | None,
+            TOrigin1 | None,
         ],
         alias: str | None = None,
         origin: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         accepts: type[TInput1],
         previous: (
             BasePattern[TInput1 | TInput3, TInput2, Literal[MatchMode.TYPE_CONVERT]]
@@ -693,19 +693,19 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         converter: (
             Callable[
                 [
-                    BasePattern[TOrigin, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
+                    BasePattern[TOrigin1, TInput1 | TInput2 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
                     TInput1 | TInput3,
                 ],
-                TOrigin | None,
+                TOrigin1 | None,
             ]
             | None
         ) = None,
         alias: str | None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
         accepts: type[TInput1],
@@ -716,19 +716,19 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         ),
         addition_accepts: BasePattern[Any, TInput3, Any],
         converter: Callable[
-            [BasePattern[TOrigin, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3],
-            TOrigin | None,
+            [BasePattern[TOrigin1, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3],
+            TOrigin1 | None,
         ],
         origin: None = None,
         alias: str | None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
+        self: BasePattern[TOrigin1, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]],
         *,
         mode: Literal[MatchMode.TYPE_CONVERT],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         accepts: type[TInput1],
         previous: (
             BasePattern[TInput1 | TInput3, TInput1 | TInput3, Literal[MatchMode.VALUE_OPERATE]]
@@ -738,75 +738,75 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
         addition_accepts: BasePattern[Any, TInput3, Any],
         converter: (
             Callable[
-                [BasePattern[TOrigin, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3],
-                TOrigin | None,
+                [BasePattern[TOrigin1, TInput1 | TInput3, Literal[MatchMode.TYPE_CONVERT]], TInput1 | TInput3],
+                TOrigin1 | None,
             ]
             | None
         ) = None,
         alias: str | None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]],
+        self: BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]],
         *,
         mode: Literal[MatchMode.VALUE_OPERATE],
-        origin: type[TOrigin],
+        origin: type[TOrigin1],
         converter: Callable[
-            [BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], TOrigin], TOrigin | None
+            [BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]], TOrigin1], TOrigin1 | None
         ],
         alias: str | None = None,
         previous: None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TOrigin | TInput1, Literal[MatchMode.VALUE_OPERATE]],
+        self: BasePattern[TOrigin1, TOrigin1 | TInput1, Literal[MatchMode.VALUE_OPERATE]],
         *,
         mode: Literal[MatchMode.VALUE_OPERATE],
-        origin: type[TOrigin],
-        previous: BasePattern[TOrigin, TInput1, Literal[MatchMode.TYPE_CONVERT]],
+        origin: type[TOrigin1],
+        previous: BasePattern[TOrigin1, TInput1, Literal[MatchMode.TYPE_CONVERT]],
         converter: Callable[
-            [BasePattern[TOrigin, TOrigin | TInput1, Literal[MatchMode.VALUE_OPERATE]], TOrigin],
-            TOrigin | None,
+            [BasePattern[TOrigin1, TOrigin1 | TInput1, Literal[MatchMode.VALUE_OPERATE]], TOrigin1],
+            TOrigin1 | None,
         ],
         alias: str | None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TOrigin | TInput2, Literal[MatchMode.VALUE_OPERATE]],
+        self: BasePattern[TOrigin1, TOrigin1 | TInput2, Literal[MatchMode.VALUE_OPERATE]],
         *,
         mode: Literal[MatchMode.VALUE_OPERATE],
-        origin: type[TOrigin],
-        previous: BasePattern[TOrigin, TOrigin | TInput2, Literal[MatchMode.TYPE_CONVERT]],
+        origin: type[TOrigin1],
+        previous: BasePattern[TOrigin1, TOrigin1 | TInput2, Literal[MatchMode.TYPE_CONVERT]],
         converter: Callable[
-            [BasePattern[TOrigin, TOrigin | TInput2, Literal[MatchMode.VALUE_OPERATE]], TOrigin],
-            TOrigin | None,
+            [BasePattern[TOrigin1, TOrigin1 | TInput2, Literal[MatchMode.VALUE_OPERATE]], TOrigin1],
+            TOrigin1 | None,
         ],
         alias: str | None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     @overload
     def __init__(
-        self: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]],
+        self: BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]],
         *,
         mode: Literal[MatchMode.VALUE_OPERATE],
-        origin: type[TOrigin],
-        previous: BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]],
+        origin: type[TOrigin1],
+        previous: BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]],
         converter: Callable[
-            [BasePattern[TOrigin, TOrigin, Literal[MatchMode.VALUE_OPERATE]], TOrigin], TOrigin | None
+            [BasePattern[TOrigin1, TOrigin1, Literal[MatchMode.VALUE_OPERATE]], TOrigin1], TOrigin1 | None
         ],
         alias: str | None = None,
         accepts: None = None,
         addition_accepts: None = None,
-        validators: list[Callable[[TOrigin], bool]] | None = None,
+        validators: list[Callable[[TOrigin1], bool]] | None = None,
     ): ...
     def refresh(self): ...
     def __calc_hash__(self): ...
