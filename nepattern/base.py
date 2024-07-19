@@ -386,7 +386,7 @@ class ForwardRefPattern(BasePattern[Any, Any, Literal[MatchMode.TYPE_CONVERT]]):
         if sys.version_info < (3, 9):  # pragma: no cover
             origin = self.ref._evaluate(_main.__dict__, _main.__dict__)
         else:  # pragma: no cover
-            origin = self.ref._evaluate(_main.__dict__, _main.__dict__, frozenset())  # type: ignore
+            origin = self.ref._evaluate(_main.__dict__, _main.__dict__, recursive_guard=frozenset())  # type: ignore
         if not isinstance(input_, origin):  # type: ignore
             raise MatchFailed(
                 lang.require("nepattern", "type_error").format(
