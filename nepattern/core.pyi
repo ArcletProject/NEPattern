@@ -36,7 +36,7 @@ class ResultFlag(str, Enum):
 
 T = TypeVar("T")
 T1 = TypeVar("T1")
-TInput = TypeVar("TInput")
+TInput = TypeVar("TInput", covariant=True)
 TInput1 = TypeVar("TInput1")
 TInput2 = TypeVar("TInput2")
 TInput3 = TypeVar("TInput3")
@@ -818,34 +818,34 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
 
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, Literal[MatchMode.KEEP]], input_: TInput
+        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.KEEP]], input_: TInput1
     ) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, Literal[MatchMode.KEEP]], input_: T
+        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.KEEP]], input_: T
     ) -> ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, Literal[MatchMode.VALUE_OPERATE]], input_: TInput
+        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.VALUE_OPERATE]], input_: TInput1
     ) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, Literal[MatchMode.VALUE_OPERATE]], input_: T
+        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.VALUE_OPERATE]], input_: T
     ) -> ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, TMM], input_: TInput
+        self: BasePattern[TOrigin, TInput1, TMM], input_: TInput1
     ) -> (
         ValidateResult[TOrigin, Literal[ResultFlag.VALID]]
         | ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]
     ): ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, TMM], input_: T
+        self: BasePattern[TOrigin, TInput1, TMM], input_: T
     ) -> ValidateResult[T, Literal[ResultFlag.ERROR]]: ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, Literal[MatchMode.KEEP]], input_: TInput, default: Any
+        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.KEEP]], input_: TInput1, default: Any
     ) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
     @overload
     def validate(
@@ -853,24 +853,24 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
     ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]: ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, Literal[MatchMode.VALUE_OPERATE]], input_: TInput, default: Any
+        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.VALUE_OPERATE]], input_: TInput1, default: Any
     ) -> ValidateResult[TOrigin, Literal[ResultFlag.VALID]]: ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, Literal[MatchMode.VALUE_OPERATE]], input_: Any, default: TDefault
+        self: BasePattern[TOrigin, TInput1, Literal[MatchMode.VALUE_OPERATE]], input_: Any, default: TDefault
     ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]: ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, TMM], input_: TInput, default: Any
+        self: BasePattern[TOrigin, TInput1, TMM], input_: TInput1, default: Any
     ) -> (
         ValidateResult[TOrigin, Literal[ResultFlag.VALID]]
         | ValidateResult[TOrigin, Literal[ResultFlag.ERROR]]
     ): ...
     @overload
     def validate(
-        self: BasePattern[TOrigin, TInput, TMM], input_: Any, default: TDefault
+        self: BasePattern[TOrigin, TInput1, TMM], input_: Any, default: TDefault
     ) -> ValidateResult[TDefault, Literal[ResultFlag.DEFAULT]]: ...
-    def match(self, input_: TInput) -> TOrigin: ...
+    def match(self, input_: Any) -> TOrigin: ...
     def copy(self) -> BasePattern[TOrigin, TInput, TMM]: ...
     def __rrshift__(
         self, other: T
@@ -878,5 +878,5 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
     def __rmatmul__(self, other) -> Self: ...
     def __matmul__(self, other) -> Self: ...
     def __or__(
-        self, other: BasePattern[TOrigin1, TInput1, Any]
-    ) -> BasePattern[TOrigin1 | TOrigin, TInput1 | TInput, TMM]: ...
+        self, other: BasePattern[TOrigin1, TInput2, Any]
+    ) -> BasePattern[TOrigin1 | TOrigin, TInput2 | TInput, TMM]: ...

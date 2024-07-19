@@ -345,13 +345,14 @@ _TCase = TypeVar("_TCase")
 _TSwtich = TypeVar("_TSwtich")
 
 
-class SwitchPattern(BasePattern[_TCase, _TSwtich, Literal[MatchMode.TYPE_CONVERT]]):
+class SwitchPattern(BasePattern[_TCase, _TSwtich, Literal[MatchMode.TYPE_CONVERT]], Generic[_TCase, _TSwtich]):
+    """匹配多种情况的表达式"""
     switch: dict[_TSwtich | ellipsis, _TCase]
 
     __slots__ = ("switch",)
 
-    def __init__(self, data: dict[_TSwtich | ellipsis, _TCase]):
-        self.switch = data
+    def __init__(self, data: dict[_TSwtich, _TCase] | dict[_TSwtich | ellipsis, _TCase]):
+        self.switch = data  # type: ignore
         super().__init__(mode=MatchMode.TYPE_CONVERT, origin=type(list(data.values())[0]))
 
     def __calc_repr__(self):

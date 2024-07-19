@@ -39,7 +39,7 @@ class ResultFlag(str, Enum):
 
 
 T = TypeVar("T")
-TInput = TypeVar("TInput")
+TInput = TypeVar("TInput", covariant=True)
 TOrigin = TypeVar("TOrigin")
 TVOrigin = TypeVar("TVOrigin")
 TDefault = TypeVar("TDefault")
