@@ -120,6 +120,7 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
     origin: type[TOrigin]
     alias: str | None
     previous: BasePattern | None
+    accept: Callable[[Any], bool]
     _repr: str
     _hash: int
     _accepts: type[Any] | tuple[type[Any], ...]
