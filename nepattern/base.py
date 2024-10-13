@@ -112,7 +112,7 @@ class UnionPattern(Pattern[_T]):
                 self.for_equal.append(arg)
         alias_content = "|".join([repr(a) for a in self.for_validate] + [repr(a) for a in self.for_equal])
         types = [i.origin for i in self.for_validate] + [type(i) for i in self.for_equal]
-        super().__init__(Union[*types], alias=alias_content)  # type: ignore
+        super().__init__(Union.__getitem__(tuple(types)), alias=alias_content)  # type: ignore
 
     def match(self, input_: Any):
         if not input_:
