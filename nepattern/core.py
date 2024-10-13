@@ -175,12 +175,12 @@ class Pattern(Generic[T]):
     def __str__(self):
         if self.alias:
             return self.alias
-        if self._accepts is self.origin:
-            return f"{self.origin.__name__}"
-        return f"{self._accepts.__name__} -> {self.origin.__name__}"
+        if self._accepts is self.origin or self._accepts is Any:
+            return f"{getattr(self.origin, '__name__', self.origin)}"
+        return f"{getattr(self._accepts, '__name__', self._accepts)} -> {getattr(self.origin, '__name__', self.origin)}"
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.origin.__name__}, {self.alias})"
+        return f"{self.__class__.__name__}({self.origin}, {self.alias})"
 
     def copy(self) -> Self:
         return deepcopy(self)
