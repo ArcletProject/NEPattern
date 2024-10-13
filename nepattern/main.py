@@ -24,6 +24,7 @@ from .base import (
     RegexPattern,
     SwitchPattern,
     UnionPattern,
+    combine,
 )
 from .context import all_patterns
 from .core import Pattern
@@ -38,12 +39,12 @@ def _generic_parser(item: GenericAlias, extra: str) -> Pattern:  # type: ignore
         org, *meta = get_args(item)
         if not isinstance(_o := parser(org, extra), Pattern):  # type: ignore  # pragma: no cover
             raise TypeError(_o)
-        _arg = deepcopy(_o)
-        _arg.alias = al[-1] if (al := [i for i in meta if isinstance(i, str)]) else _arg.alias
         validators = [i for i in meta if callable(i)]
-        if validators:
-            _arg.post_validate(lambda x: all(i(x) for i in validators))
-        return _arg
+        return combine(
+            _o,
+            alias=al[-1] if (al := [i for i in meta if isinstance(i, str)]) else _o.alias,
+            validator=(lambda x: all(i(x) for i in validators)) if validators else None,
+        )
     if origin in _Contents:
         _args = {parser(t, extra) for t in get_args(item)}
         return (_args.pop() if len(_args) == 1 else UnionPattern(*_args)) if _args else ANY

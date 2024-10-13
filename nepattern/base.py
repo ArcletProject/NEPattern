@@ -5,16 +5,7 @@ from enum import Enum
 from pathlib import Path
 import re
 import sys
-from typing import (
-    Any,
-    ForwardRef,
-    Generic,
-    Match,
-    TypeVar,
-    Union,
-    final,
-    Final
-)
+from typing import Any, Callable, Final, ForwardRef, Generic, Match, TypeVar, Union, final
 
 from tarina import DateParser, lang
 
@@ -154,6 +145,7 @@ _TSwtich = TypeVar("_TSwtich")
 
 class SwitchPattern(Pattern[_TCase], Generic[_TCase, _TSwtich]):
     """匹配多种情况的表达式"""
+
     switch: dict[_TSwtich | ellipsis, _TCase]
 
     __slots__ = ("switch",)
@@ -426,10 +418,10 @@ class WideBoolPattern(Pattern[bool]):
 WIDE_BOOLEAN = WideBoolPattern()
 """宽松布尔表达式，可以接受更多的布尔样式的量"""
 
-LIST: Final[Pattern[list]] = Pattern.regex_convert(r"(\[.+?\])",list, lambda m: eval(m[1]), alias="list")
-TUPLE: Final[Pattern[tuple]] = Pattern.regex_convert(r"(\(.+?\))",tuple, lambda m: eval(m[1]), alias="tuple")
-SET: Final[Pattern[set]] = Pattern.regex_convert(r"(\{.+?\})",set, lambda m: eval(m[1]), alias="set")
-DICT: Final[Pattern[dict]] = Pattern.regex_convert(r"(\{.+?\})",dict, lambda m: eval(m[1]), alias="dict")
+LIST: Final[Pattern[list]] = Pattern.regex_convert(r"(\[.+?\])", list, lambda m: eval(m[1]), alias="list")
+TUPLE: Final[Pattern[tuple]] = Pattern.regex_convert(r"(\(.+?\))", tuple, lambda m: eval(m[1]), alias="tuple")
+SET: Final[Pattern[set]] = Pattern.regex_convert(r"(\{.+?\})", set, lambda m: eval(m[1]), alias="set")
+DICT: Final[Pattern[dict]] = Pattern.regex_convert(r"(\{.+?\})", dict, lambda m: eval(m[1]), alias="dict")
 
 EMAIL: Final = Pattern.regex_match(r"(?:[\w\.+-]+)@(?:[\w\.-]+)\.(?:[\w\.-]+)", alias="email")
 """匹配邮箱地址的表达式"""
@@ -527,14 +519,15 @@ PathFile: Final = (
     Pattern(bytes)
     .accept(Union[str, Path, bytes])
     .pre_validate(lambda x: isinstance(x, bytes) or (isinstance(x, (str, Path)) and Path(x).is_file()))
-    .convert(lambda _, x: x if isinstance(x, bytes) else x.read_bytes())
+    .convert(lambda _, x: x if isinstance(x, bytes) else Path(x).read_bytes())
 )
 
 
 def combine(
     current: Pattern[_T],
-    previous: Pattern[Any],
+    previous: Pattern[Any] | None = None,
     alias: str | None = None,
+    validator: Callable[[_T], bool] | None = None,
 ) -> Pattern[_T]:
     _new = current.copy()
     if previous:
@@ -546,6 +539,18 @@ def combine(
         _new.match = match.__get__(_new)
     if alias:
         _new.alias = alias
+    if validator:
+        _match = _new.match
+
+        def match(self, input_):
+            res = _match(input_)
+            if not validator(res):
+                raise MatchFailed(
+                    lang.require("nepattern", "error.content").format(target=input_, expected=alias)
+                )
+            return res
+
+        _new.match = match.__get__(_new)
     return _new
 
 

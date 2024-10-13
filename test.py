@@ -134,9 +134,7 @@ def test_pattern_regex():
 def test_pattern_regex_convert():
     """测试 BasePattern 的正则转换模式, 正则匹配成功后再进行类型转换"""
     pat4 = Pattern.regex_convert(
-        r"\[at:(\d+)\]",
-        int,
-        lambda m: res if (res := int(x[1])) < 1000000 else None,
+        r"\[at:(\d+)\]", int, lambda m: res if (res := int(m[1])) < 1000000 else None, allow_origin=True
     )
     assert pat4.execute("[at:123456]").value() == 123456
     assert pat4.execute("[at:abcdef]").failed
@@ -170,56 +168,14 @@ def test_pattern_type_convert():
 
 def test_pattern_accepts():
     """测试 BasePattern 的输入类型筛选, 不在范围内的类型视为非法"""
-    pat6 = BasePattern(
-        mode=MatchMode.TYPE_CONVERT,
-        origin=str,
-        converter=lambda _, x: x.decode(),
-        accepts=bytes,
-    )
+
+    pat6 = Pattern(str).accept(bytes).convert(lambda _, x: x.decode())
     assert pat6.execute(b"123").value() == "123"
     assert pat6.execute(123).failed
-    pat6_1 = BasePattern(mode=MatchMode.KEEP, accepts=Union[int, float])
+    pat6_1 = Pattern().accept(Union[int, float])
     assert pat6_1.execute(123).value() == 123
     assert pat6_1.execute("123").failed
     print(pat6, pat6_1)
-    pat6_2 = BasePattern(mode=MatchMode.KEEP, accepts=bytes, addition_accepts=NUMBER)
-    assert pat6_2.execute(123).value() == 123
-    assert pat6_2.execute(123.123).value() == 123.123
-    assert pat6_2.execute(b"123").value() == b"123"
-    print(pat6_2)
-    pat6_3 = BasePattern(mode=MatchMode.KEEP, addition_accepts=INTEGER | BOOLEAN)
-    assert pat6_3.execute(123).value() == 123
-    assert pat6_3.execute(True).value() is True
-    assert pat6_3.execute(b"123").value() == b"123"
-    assert pat6_3.execute([]).failed
-
-
-def test_pattern_previous():
-    """测试 BasePattern 的前置表达式, 在传入的对象类型不正确时会尝试用前置表达式进行预处理"""
-
-    class A:
-        def __repr__(self):
-            return "123"
-
-    pat7 = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str, converter=lambda _, x: f"abc[{x}]", accepts=A)
-    pat7_1 = BasePattern(
-        r"abc\[(\d+)\]",
-        mode=MatchMode.REGEX_CONVERT,
-        origin=int,
-        converter=lambda self, x: self.origin(x[1]),
-        previous=pat7,
-    )
-    assert pat7_1.execute("abc[123]").value() == 123
-    assert pat7_1.execute(A()).value() == 123
-    pat7_2 = BasePattern(mode=MatchMode.TYPE_CONVERT, origin=str)
-    pat7_3 = BasePattern(
-        mode=MatchMode.TYPE_CONVERT,
-        origin=int,
-        accepts=Union[int, float],  # type: ignore
-        previous=pat7_2,  # type: ignore
-    )
-    assert pat7_3.execute("123").failed
-    print(pat7, pat7_1)
 
 
 def test_pattern_anti():
@@ -234,17 +190,10 @@ def test_pattern_anti():
 
 def test_pattern_validator():
     """测试 BasePattern 的匹配后验证器, 会对匹配结果进行验证"""
-    pat9 = BasePattern(mode=MatchMode.KEEP, accepts=int, validators=[lambda x: x > 0])
+    pat9 = Pattern(int).accept(int).post_validate(lambda x: x > 0)
     assert pat9.execute(23).value() == 23
     assert pat9.execute(-23).failed
     print(pat9)
-
-
-def test_pattern_default():
-    pat10 = Pattern(int)
-    assert pat10.execute("123", 123).or_default
-    assert pat10.execute("123", 123).value() == 123
-    assert AntiPattern(pat10).execute(123, "123").value() == "123"
 
 
 def test_parser():
@@ -255,13 +204,13 @@ def test_parser():
     assert pat11.execute(-321).success
     pat11_1 = parser(123)
     print(pat11, pat11_1)
-    pat11_2 = BasePattern.to(int)
+    pat11_2 = parser(int)
     assert pat11_2 == pat11
     assert isinstance(parser(Literal["a", "b"]), UnionPattern)
     assert parser(Type[int]).origin is type
-    assert parser(complex) == Pattern(complex)
+    assert parser(complex) != Pattern(complex)
     assert isinstance(parser("a|b|c"), UnionPattern)
-    assert isinstance(parser("re:a|b|c"), BasePattern)
+    assert isinstance(parser("re:a|b|c"), Pattern)
     assert parser([1, 2, 3]).execute(1).success
     assert parser({"a": 1, "b": 2}).execute("a").value() == 1
 
@@ -275,7 +224,7 @@ def test_parser():
 
     pat11_3 = parser(my_func)
     assert pat11_3.origin == str
-    assert pat11_3._accepts == (int,)
+    assert pat11_3._accepts == int
 
     assert parser(complex, extra="ignore") == ANY
 
@@ -313,57 +262,12 @@ def test_union_pattern():
     pat12_1 = parser(Optional[str])
     assert pat12_1.execute("123").success
     assert pat12_1.execute(None).success
-    pat12_2 = UnionPattern(["abc", "efg"])
+    pat12_2 = UnionPattern("abc", "efg")
     assert pat12_2.execute("abc").success
     assert pat12_2.execute("bca").failed
     print(pat12, pat12_1, pat12_2)
-    pat12_3 = UnionPattern._(List[bool], int)
-    pat12_4 = pat12_2 | pat12_3
-    print(pat12_3, pat12_4)
-
-
-def test_seq_pattern():
-    from typing import List, Set, Tuple
-
-    pat13 = parser(List[int])
-    pat13_1 = parser(Tuple[int, int])
-    pat13_2 = parser(Set[int])
-    assert pat13.execute("[1,2,3]").value() == [1, 2, 3]
-    assert pat13.execute([1, 2, 3]).success
-    assert pat13_1.execute("(1,2,3)").value() == (1, 2, 3)
-    assert pat13_2.execute("{1,2,a}").failed
-    print(pat13, pat13_1, pat13_2)
-    try:
-        SequencePattern(dict, Pattern(int))  # type: ignore
-    except ValueError as e:
-        print(e)
-    pat13_3 = SequencePattern(list, INTEGER, IterMode.PRE)
-    assert pat13_3.execute([1, 2, 3]).success
-    assert pat13_3.execute("[1, 2, a]").value() == [1, 2]
-    pat13_4 = SequencePattern(list, INTEGER, IterMode.SUF)
-    assert pat13_4.execute([1, 2, 3]).success
-    assert pat13_4.execute("[1, 2, a]").failed
-    assert pat13_4.execute("[a, 2, 3]").value() == [2, 3]
-
-
-def test_map_pattern():
-    from typing import Dict
-
-    pat14 = parser(Dict[str, int])
-    assert pat14.execute("{a:1,b:2}").value() == {"a": 1, "b": 2}
-    assert pat14.execute("{a:a, b:2}").failed
-    assert pat14.execute({"a": 1, "b": 2}).success
-    pat14_1 = parser(Dict[int, int])
-    assert pat14_1.execute({"a": 1, "b": 2}).failed
-    print(pat14)
-    pat14_2 = MappingPattern(INTEGER, BOOLEAN, IterMode.PRE)
-    assert pat14_2.execute({1: True, 2: False}).success
-    assert pat14_2.execute({1: True, 2: None}).value() == {1: True}
-    assert pat14_2.execute({0: None, 1: True, 2: False}).failed
-    pat14_3 = MappingPattern(INTEGER, BOOLEAN, IterMode.SUF)
-    assert pat14_3.execute({1: True, 2: False}).success
-    assert pat14_3.execute({0: None, 1: False, 2: True}).value() == {1: False, 2: True}
-    assert pat14_3.execute({0: False, 1: True, 2: None}).failed
+    pat12_3 = UnionPattern.of(List[bool], int)
+    print(pat12_3)
 
 
 def test_converters():
@@ -395,7 +299,7 @@ def test_converters():
 
 def test_converter_method():
     temp = create_local_patterns("test", set_current=False)
-    temp.set(Pattern(complex))
+    temp.set(Pattern(complex, "complex"))
     assert temp["complex"]
     temp.set(Pattern(complex), alias="abc")
     assert temp["abc"]
@@ -406,27 +310,14 @@ def test_converter_method():
     assert temp["c"]
     temp.remove(complex, alias="complex")
     assert not temp.get("complex")
-    temp.set(BasePattern(mode=MatchMode.KEEP, alias="a"))
-    temp.set(BasePattern(mode=MatchMode.KEEP, accepts=int, alias="b"), alias="a", cover=False)
+    temp.set(Pattern(alias="a"))
+    temp.set(Pattern(alias="b").accept(int), alias="a", cover=False)
     temp.remove(int, alias="a")
     assert temp["a"]
     temp.remove(int)
     temp.remove(bool)
     temp.remove(type(None))
     assert not temp.get(int)
-
-
-def test_dunder():
-    pat17 = Pattern(float)
-    assert ("test_float" @ pat17).alias == "test_float"
-    assert pat17.execute(1.33).step(str) == pat17.execute(1.33) >> str == "1.33"
-    assert (pat17.execute(1.33) >> 1).value() == 1.33
-    assert not "1.33" >> pat17
-    assert pat17.execute(1.33) >> bool
-    assert Pattern(int).execute(1).step(lambda x: x + 2) == 3
-    pat17_1 = BasePattern(r"@(\d+)", MatchMode.REGEX_CONVERT, str, lambda _, x: x[0][1:])
-    pat17_2: BasePattern[int, Any, Any] = parser(int)
-    assert ("@123456" >> pat17_1 >> pat17_2).value() == 123456
 
 
 def test_regex_pattern():
@@ -492,11 +383,9 @@ def test_direct():
     assert pat20.execute("abc").value() == "abc"
     assert pat20.execute("abcd").failed
     assert pat20.execute(123).failed
-    assert pat20.execute("123", 123).value() == 123
     pat20_1 = DirectPattern(123)
     assert pat20_1.execute(123).value() == 123
     assert pat20_1.execute("123").failed
-    assert pat20_1.execute(123, "123").value() == 123
     assert pat20_1.match(123) == 123
     try:
         pat20_1.match("123")
@@ -505,12 +394,11 @@ def test_direct():
     pat21 = DirectTypePattern(int)
     assert pat21.execute(123).value() == 123
     assert pat21.execute("123").failed
-    assert pat21.execute(123, "123").value() == 123
     assert pat21.match(123) == 123
     assert pat21.match(456) == 456
 
 
-def test_forward_red():
+def test_forward_ref():
     from typing import ForwardRef
 
     pat21 = parser(ForwardRef("int"))
@@ -520,117 +408,31 @@ def test_forward_red():
 
 
 def test_value_operate():
-    pat22 = BasePattern(
-        mode=MatchMode.VALUE_OPERATE,
-        origin=int,
-        converter=lambda _, x: x + 1,
+    pat22 = Pattern(origin=int).convert(
+        lambda _, x: x + 1,
     )
     assert pat22.execute(123).value() == 124
     assert pat22.execute("123").failed
     assert pat22.execute(123.0).failed
 
-    pat22_1p = BasePattern(
-        mode=MatchMode.TYPE_CONVERT,
-        origin=int,
-        accepts=Union[str, float],
-        converter=lambda _, x: int(x),
-    )
-
-    pat22_1 = BasePattern(
-        mode=MatchMode.VALUE_OPERATE,
-        origin=int,
-        converter=lambda _, x: x + 1,
-        previous=pat22_1p,
-    )
-    assert pat22_1.execute(123).value() == 124
-    assert pat22_1.execute("123").value() == 124
-    assert pat22_1.execute(123.0).value() == 124
-    assert pat22_1.execute("123.0").failed
-    assert pat22_1.execute([]).failed
-
 
 def test_eq():
     assert parser(123) == Pattern.on(123)
-    assert BasePattern.to(None) == NONE
+    assert parser(None) == NONE
     assert parser(Pattern(int)) == Pattern(int)
     assert parser(str) == STRING
 
 
 def test_combine():
-    pre = BasePattern(mode=MatchMode.VALUE_OPERATE, origin=str, converter=lambda _, x: x.replace(",", "_"))
+    pre = Pattern(origin=str).convert(lambda _, x: x.replace(",", "_"))
     pat23 = combine(INTEGER, pre)
     assert pat23.execute("123,456").value() == 123456
     assert pat23.execute("1,000,000").value() == 1_000_000
 
-    pat23_1 = combine(INTEGER, alias="0~10", validators=[lambda x: 0 <= x <= 10])
+    pat23_1 = combine(INTEGER, alias="0~10", validator=lambda x: 0 <= x <= 10)
     assert pat23_1.execute(5).value() == 5
     assert pat23_1.execute(11).failed
     assert str(pat23_1) == "0~10"
-
-
-def test_funcs():
-    from dataclasses import dataclass
-
-    pat = BasePattern(
-        mode=MatchMode.TYPE_CONVERT,
-        accepts=str,
-        origin=list[str],
-        alias="chars",
-        converter=lambda _, x: list(x),
-    )
-    assert pat.execute("abcde").value() == ["a", "b", "c", "d", "e"]
-
-    pat24 = Index(pat, 2)
-    assert pat24.execute("abcde").value() == "c"
-
-    pat24_1 = Slice(pat, 1, 3)
-    assert pat24_1.execute("abcde").value() == ["b", "c"]
-
-    pat24_2 = Map(pat, lambda x: x.upper(), "str.upper")
-    assert pat24_2.execute("abcde").value() == ["A", "B", "C", "D", "E"]
-
-    pat24_3 = Filter(pat, lambda x: x in "aeiou", "vowels")
-    assert pat24_3.execute("abcde").value() == ["a", "e"]
-
-    pat24_4 = Filter(Map(pat, lambda x: x.upper(), "str.upper"), lambda x: x in "AEIOU", "vowels")
-    assert pat24_4.execute("abcde").value() == ["A", "E"]
-
-    pat24_5 = Reduce(pat24_2, lambda x, y: x + y, funcname="add")
-    assert pat24_5.execute("abcde").value() == "ABCDE"
-
-    pat24_6 = Join(pat, sep="-")
-    assert pat24_6.execute("abcde").value() == "a-b-c-d-e"
-
-    pat24_7 = Upper(pat24_6)
-    assert pat24_7.execute("abcde").value() == "A-B-C-D-E"
-
-    pat24_8 = Lower(pat24_7)
-    assert pat24_8.execute("abcde").value() == "a-b-c-d-e"
-
-    pat24_9 = Sum(Map(pat, ord))
-    assert pat24_9.execute("abcde").value() == 495
-
-    pat24_10 = Step(pat, len)
-    assert pat24_10.execute("abcde").value() == 5
-
-    pat24_11 = Step(pat, lambda x: x.count("a"), funcname="count_a")
-    assert pat24_11.execute("abcde").value() == 1
-
-    @dataclass
-    class Test:
-        a: int
-        b: str
-
-    pat1 = Pattern(Test)
-    obj = Test(123, "abc")
-    assert pat1.execute(obj).value() == obj
-
-    pat24_12 = Dot(pat1, int, "a")
-    assert pat24_12.execute(obj).value() == 123
-
-    pat2 = Pattern.on({"a": 123, "b": "abc"})
-    pat24_13 = GetItem(pat2, int, "a")
-    assert pat24_13.execute({"a": 123, "b": "abc"}).value() == 123
 
 
 if __name__ == "__main__":

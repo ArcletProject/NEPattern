@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import dataclasses
 import sys
+from types import GenericAlias as CGenericAlias  # noqa: F401
 from typing import TYPE_CHECKING, List, Pattern, Union
 from typing_extensions import TypeAlias
 
 from .i18n import lang as lang  # noqa: F401
-
-from types import GenericAlias as CGenericAlias  # noqa: F401
 
 if sys.version_info >= (3, 10):  # pragma: no cover
     from types import UnionType as CUnionType  # noqa: F401

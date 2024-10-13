@@ -7,9 +7,7 @@ from .core import Pattern
 class Patterns(UserDict[Any, Pattern]):
     name: str
     def __init__(self, name: str): ...
-    def set(
-        self, target: Pattern[Any], alias: str | None = None, cover: bool = True, no_alias=False
-    ):
+    def set(self, target: Pattern[Any], alias: str | None = None, cover: bool = True, no_alias=False):
         """
         增加可使用的类型转换器
 
