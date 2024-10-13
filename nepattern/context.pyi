@@ -1,14 +1,14 @@
 from collections import UserDict
 from typing import Any, Iterable, final
 
-from .core import BasePattern
+from .core import Pattern
 
 @final
-class Patterns(UserDict[Any, BasePattern]):
+class Patterns(UserDict[Any, Pattern]):
     name: str
     def __init__(self, name: str): ...
     def set(
-        self, target: BasePattern[Any, Any, Any], alias: str | None = None, cover: bool = True, no_alias=False
+        self, target: Pattern[Any], alias: str | None = None, cover: bool = True, no_alias=False
     ):
         """
         增加可使用的类型转换器
@@ -21,13 +21,13 @@ class Patterns(UserDict[Any, BasePattern]):
         """
         ...
 
-    def sets(self, patterns: Iterable[BasePattern[Any, Any, Any]], cover: bool = True, no_alias=False): ...
-    def merge(self, patterns: dict[str, BasePattern[Any, Any, Any]], no_alias=False): ...
+    def sets(self, patterns: Iterable[Pattern[Any]], cover: bool = True, no_alias=False): ...
+    def merge(self, patterns: dict[str, Pattern[Any]], no_alias=False): ...
     def remove(self, origin_type: type, alias: str | None = None): ...
 
 def create_local_patterns(
     name: str,
-    data: dict[Any, BasePattern[Any, Any, Any]] | None = None,
+    data: dict[Any, Pattern[Any]] | None = None,
     set_current: bool = True,
 ) -> Patterns:
     """

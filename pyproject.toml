@@ -7,9 +7,9 @@ authors = [
 ]
 dependencies = [
     "typing-extensions>=4.5.0",
-    "tarina>=0.5.1",
+    "tarina<0.7,>=0.6",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 readme = "README.md"
 license = {text = "MIT"}
 keywords = [
@@ -86,7 +86,7 @@ python_files = "test.py"
 
 [tool.black]
 line-length = 110
-target-version = ["py38", "py39", "py310", "py311"]
+target-version = ["py39", "py310", "py311", "py312", "py313"]
 include = '\.pyi?$'
 extend-exclude = '''
 '''
