@@ -13,9 +13,8 @@ def test_basic():
     from datetime import datetime
 
     res = STRING.execute("123")
-    if res:
-        assert res.success
-        assert res.value() == "123"
+    assert res.success
+    assert res.value() == "123"
     assert STRING.execute(b"123").value() == "123"
     assert STRING.execute(123).failed
 
@@ -75,6 +74,10 @@ def test_basic():
     assert PATH.execute(Path("a/b/c")).value() == Path("a/b/c")
     assert PATH.execute([]).failed
 
+    assert DelimiterInt.execute("1,000").value() == 1000
+    assert DelimiterInt.execute("1,000,000").value() == 1000000
+    assert DelimiterInt.execute("1,000,000.0").failed
+
 
 def test_result():
     res = NUMBER.execute(123)
@@ -96,7 +99,7 @@ def test_result():
 
 
 def test_pattern_of():
-    """测试 BasePattern 的快速创建方法之一, 对类有效"""
+    """测试 Pattern 的快速创建方法之一, 对类有效"""
     pat = Pattern(int)
     assert pat.origin == int
     assert pat.execute(123).value() == 123
@@ -107,7 +110,7 @@ def test_pattern_of():
 
 
 def test_pattern_on():
-    """测试 BasePattern 的快速创建方法之一, 对对象有效"""
+    """测试 Pattern 的快速创建方法之一, 对对象有效"""
     pat1 = Pattern.on(123)
     assert pat1.origin == int
     assert pat1.execute(123).value() == 123
@@ -116,7 +119,7 @@ def test_pattern_on():
 
 
 def test_pattern_keep():
-    """测试 BasePattern 的保持模式, 不会进行匹配或者类型转换"""
+    """测试 Pattern 的保持模式, 不会进行匹配或者类型转换"""
     pat2 = Pattern()
     assert pat2.execute(123).value() == 123
     assert pat2.execute("abc").value() == "abc"
@@ -124,7 +127,7 @@ def test_pattern_keep():
 
 
 def test_pattern_regex():
-    """测试 BasePattern 的正则匹配模式, 仅正则匹配"""
+    """测试 Pattern 的正则匹配模式, 仅正则匹配"""
     pat3 = Pattern.regex_match("abc[A-Z]+123")
     assert pat3.execute("abcABC123").value() == "abcABC123"
     assert pat3.execute("abcAbc123").failed
@@ -132,7 +135,7 @@ def test_pattern_regex():
 
 
 def test_pattern_regex_convert():
-    """测试 BasePattern 的正则转换模式, 正则匹配成功后再进行类型转换"""
+    """测试 Pattern 的正则转换模式, 正则匹配成功后再进行类型转换"""
     pat4 = Pattern.regex_convert(
         r"\[at:(\d+)\]", int, lambda m: res if (res := int(m[1])) < 1000000 else None, allow_origin=True
     )
@@ -142,9 +145,15 @@ def test_pattern_regex_convert():
     assert pat4.execute("[at:1234567]").failed
     print(pat4)
 
+    pat4_1 = Pattern.regex_convert(r"\[at:(\d+)\]", int, lambda m: int(m[1]), allow_origin=False)
+    assert pat4_1.execute("[at:123456]").value() == 123456
+    assert pat4_1.execute("[at:abcdef]").failed
+    assert pat4_1.execute(123456).failed
+    print(pat4_1)
+
 
 def test_pattern_type_convert():
-    """测试 BasePattern 的类型转换模式, 仅将传入对象变为另一类型的新对象"""
+    """测试 Pattern 的类型转换模式, 仅将传入对象变为另一类型的新对象"""
     pat5 = Pattern(origin=str).convert(lambda _, x: str(x))
     assert pat5.execute(123).value() == "123"
     assert pat5.execute([4, 5, 6]).value() == "[4, 5, 6]"
@@ -167,7 +176,7 @@ def test_pattern_type_convert():
 
 
 def test_pattern_accepts():
-    """测试 BasePattern 的输入类型筛选, 不在范围内的类型视为非法"""
+    """测试 Pattern 的输入类型筛选, 不在范围内的类型视为非法"""
 
     pat6 = Pattern(str).accept(bytes).convert(lambda _, x: x.decode())
     assert pat6.execute(b"123").value() == "123"
@@ -178,8 +187,16 @@ def test_pattern_accepts():
     print(pat6, pat6_1)
 
 
+def test_pattern_pre_validator():
+    """测试 Pattern 的匹配前验证器, 会在匹配前对输入进行验证"""
+    pat7 = Pattern(float).pre_validate(lambda x: x != 0).convert(lambda _, x: 1 / x)
+    assert pat7.execute(123).value() == 1 / 123
+    assert pat7.execute(0).failed
+    print(pat7)
+
+
 def test_pattern_anti():
-    """测试 BasePattern 的反向验证功能"""
+    """测试 Pattern 的反向验证功能"""
     pat8 = Pattern(int)
     pat8_1 = AntiPattern(pat8)
     assert pat8.execute(123).value() == 123
@@ -189,7 +206,7 @@ def test_pattern_anti():
 
 
 def test_pattern_validator():
-    """测试 BasePattern 的匹配后验证器, 会对匹配结果进行验证"""
+    """测试 Pattern 的匹配后验证器, 会对匹配结果进行验证"""
     pat9 = Pattern(int).accept(int).post_validate(lambda x: x > 0)
     assert pat9.execute(23).value() == 23
     assert pat9.execute(-23).failed
@@ -268,6 +285,16 @@ def test_union_pattern():
     print(pat12, pat12_1, pat12_2)
     pat12_3 = UnionPattern.of(List[bool], int)
     print(pat12_3)
+    pat12_4 = UnionPattern(INTEGER, WIDE_BOOLEAN)
+    assert pat12_4.execute(123).success
+    assert pat12_4.execute("123").success
+    assert pat12_4.execute("123").value() == 123
+    assert pat12_4.execute("true").success
+    assert pat12_4.execute("true").value() is True
+    assert pat12_4.execute("false").success
+    assert pat12_4.execute("false").value() is False
+    assert pat12_4.execute("yes").success
+    assert pat12_4.execute("yes").value() is True
 
 
 def test_converters():
@@ -329,7 +356,7 @@ def test_regex_pattern():
     assert res.groupdict() == {"owner": "ArcletProject", "repo": "NEPattern"}
     assert pat18.execute(123).failed
     assert pat18.execute("www.bilibili.com").failed
-    pat18_1 = parser(r"re:(\d+)")  # str starts with "re:" will convert to BasePattern instead of RegexPattern
+    pat18_1 = parser(r"re:(\d+)")  # str starts with "re:" will convert to Pattern instead of RegexPattern
     assert pat18_1.execute("1234").value() == "1234"
     pat18_2 = parser(r"rep:(\d+)")  # str starts with "rep:" will convert to RegexPattern
     assert pat18_2.execute("1234").value().groups() == ("1234",)  # type: ignore

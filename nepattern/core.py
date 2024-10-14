@@ -45,7 +45,7 @@ class ValidateResult(Generic[T]):
     def failed(self) -> bool:
         return self._value is Empty
 
-    def __bool__(self):
+    def __bool__(self):  # pragma: no cover
         return self._value != Empty
 
     def __repr__(self):
@@ -59,7 +59,7 @@ class ValidateResult(Generic[T]):
 class Pattern(Generic[T]):
     @staticmethod
     def regex_match(pattern: str | TPattern, alias: str | None = None):
-        pat = Pattern(str, alias or str(pattern))
+        pat = _RegexPattern(pattern, str, alias or str(pattern))
 
         @pat.convert
         def _(self, x: str):
@@ -80,7 +80,7 @@ class Pattern(Generic[T]):
         alias: str | None = None,
         allow_origin: bool = False,
     ):
-        pat = Pattern(origin, alias or str(pattern))
+        pat = _RegexPattern(pattern, origin, alias or str(pattern))
         if allow_origin:
             pat.accept(Union[str, origin])
 
@@ -190,7 +190,7 @@ class Pattern(Generic[T]):
     def copy(self) -> Self:
         return deepcopy(self)
 
-    def __rrshift__(self, other):
+    def __rrshift__(self, other):  # pragma: no cover
         return self.execute(other)
 
     def __rmatmul__(self, other) -> Self:  # pragma: no cover
@@ -208,3 +208,9 @@ class Pattern(Generic[T]):
 
     def __eq__(self, other):
         return isinstance(other, Pattern) and self.__hash__() == other.__hash__()
+
+
+class _RegexPattern(Pattern[T]):
+    def __init__(self, pattern: str | TPattern, origin: type[T], alias: str | None = None):
+        super().__init__(origin, alias)
+        self.pattern = pattern

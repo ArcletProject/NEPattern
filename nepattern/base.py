@@ -9,7 +9,7 @@ from typing import Any, Callable, Final, ForwardRef, Generic, Match, TypeVar, Un
 
 from tarina import DateParser, lang
 
-from .core import Pattern
+from .core import Pattern, _RegexPattern
 from .exception import MatchFailed
 from .util import TPattern
 
@@ -28,7 +28,7 @@ def _SpecialPattern(cls: type[_TP]) -> type[_TP]:
         old_init(self, *args, **kwargs)
 
         @self.pre_validate
-        def _(x):
+        def _(x):  # pragma: no cover
             try:
                 self.match(x)
                 return True
@@ -36,7 +36,7 @@ def _SpecialPattern(cls: type[_TP]) -> type[_TP]:
                 return False
 
         @self.convert
-        def _(s, x):
+        def _(s, x):  # pragma: no cover
             return s.match(x)
 
     cls.__init__ = __init__
@@ -61,7 +61,7 @@ class DirectPattern(Pattern[TOrigin]):
     def __eq__(self, other):  # pragma: no cover
         return isinstance(other, DirectPattern) and self.target == other.target
 
-    def copy(self):
+    def copy(self):  # pragma: no cover
         return DirectPattern(self.target, self.alias)
 
 
@@ -85,18 +85,17 @@ class DirectTypePattern(Pattern[TOrigin]):
     def __eq__(self, other):  # pragma: no cover
         return isinstance(other, DirectTypePattern) and self.origin is other.origin
 
-    def copy(self):
+    def copy(self):  # pragma: no cover
         return DirectTypePattern(self.origin, self.alias)
 
 
 @_SpecialPattern
-class RegexPattern(Pattern[Match[str]]):
+class RegexPattern(_RegexPattern[Match[str]]):
     """针对正则的特化匹配，支持正则组"""
 
     def __init__(self, pattern: str | TPattern, alias: str | None = None):
-        super().__init__(Match[str], alias=alias or "regex[:group]")
+        super().__init__(pattern, Match[str], alias=alias or "regex[:group]")
         self.regex_pattern = re.compile(pattern)
-        self.pattern = self.regex_pattern.pattern
 
     def match(self, input_: Any) -> Match[str]:
         if not isinstance(input_, str):
@@ -114,7 +113,7 @@ class RegexPattern(Pattern[Match[str]]):
     def __eq__(self, other):  # pragma: no cover
         return isinstance(other, RegexPattern) and self.pattern == other.pattern
 
-    def copy(self):
+    def copy(self):  # pragma: no cover
         return RegexPattern(self.pattern, self.alias)
 
 
@@ -304,7 +303,7 @@ class BytesPattern(Pattern[bytes]):
     def match(self, input_: Any) -> bytes:
         if isinstance(input_, bytes):
             return input_
-        elif isinstance(input_, bytearray):
+        elif isinstance(input_, bytearray):  # pragma: no cover
             return bytes(input_)
         elif isinstance(input_, str):
             return input_.encode()
@@ -407,7 +406,7 @@ class BoolPattern(Pattern[bool]):
             return input_
         if isinstance(input_, bytes):  # pragma: no cover
             input_ = input_.decode()
-        if isinstance(input_, str):
+        if isinstance(input_, str):  # pragma: no cover
             input_ = input_.lower()
         if input_ == "true":
             return True

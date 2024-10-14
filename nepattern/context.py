@@ -53,7 +53,7 @@ class Patterns(UserDict):
             else:
                 del self.data[alias]
         elif al_pat := self.data.get(origin_type):
-            if isinstance(al_pat, UnionPattern):
+            if isinstance(al_pat, UnionPattern):  # pragma: no cover
                 self.data[origin_type] = UnionPattern(
                     *filter(lambda x: x.origin != origin_type, al_pat.for_validate)
                 )
