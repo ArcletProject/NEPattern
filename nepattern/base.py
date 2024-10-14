@@ -95,7 +95,6 @@ class RegexPattern(_RegexPattern[Match[str]]):
 
     def __init__(self, pattern: str | TPattern, alias: str | None = None):
         super().__init__(pattern, Match[str], alias=alias or "regex[:group]")
-        self.regex_pattern = re.compile(pattern)
 
     def match(self, input_: Any) -> Match[str]:
         if not isinstance(input_, str):
@@ -104,7 +103,7 @@ class RegexPattern(_RegexPattern[Match[str]]):
                     type=input_.__class__, target=input_, expected="str"
                 )
             )
-        if mat := self.regex_pattern.match(input_):
+        if mat := (re.match(self.pattern, input_) or re.search(self.pattern, input_)):
             return mat
         raise MatchFailed(
             lang.require("nepattern", "error.content").format(target=input_, expected=self.pattern)

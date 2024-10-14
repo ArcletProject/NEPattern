@@ -1,5 +1,7 @@
 from typing import Union
 
+import pytest
+
 from nepattern import *
 
 
@@ -92,10 +94,8 @@ def test_result():
     res2 = NUMBER.execute([])
     assert res2.error()
     assert not res2.success
-    try:
+    with pytest.raises(RuntimeError):
         res2.value()
-    except RuntimeError as e:
-        print(e)
 
 
 def test_pattern_of():
@@ -128,10 +128,26 @@ def test_pattern_keep():
 
 def test_pattern_regex():
     """测试 Pattern 的正则匹配模式, 仅正则匹配"""
+    import re
+
     pat3 = Pattern.regex_match("abc[A-Z]+123")
     assert pat3.execute("abcABC123").value() == "abcABC123"
     assert pat3.execute("abcAbc123").failed
     print(pat3)
+
+    with pytest.raises(ValueError):
+        Pattern.regex_match("^abc[A-Z]+123")
+
+    pat3_1 = Pattern.regex_match(re.compile(r"abc[A-Z]+123"))
+    assert pat3_1.execute("abcABC123").value() == "abcABC123"
+
+    pat3_2 = Pattern.regex_match("abc").prefixed()
+    assert pat3_2.execute("abc123").value() == "abc"
+    assert pat3_2.execute("123abc").failed
+
+    pat3_3 = Pattern.regex_match("abc").suffixed()
+    assert pat3_3.execute("123abc").value() == "abc"
+    assert pat3_3.execute("abc123").failed
 
 
 def test_pattern_regex_convert():
@@ -245,10 +261,8 @@ def test_parser():
 
     assert parser(complex, extra="ignore") == ANY
 
-    try:
+    with pytest.raises(TypeError):
         parser(complex, extra="reject")
-    except TypeError as e:
-        print(e)
 
     pat11_4 = parser(Annotated[int, lambda x: x < 10])
     assert pat11_4.execute(11).failed
@@ -389,15 +403,11 @@ def test_patterns():
     assert not local_patterns().get("b")
     reset_local_patterns()
 
-    try:
+    with pytest.raises(ValueError):
         create_local_patterns("$temp")
-    except ValueError as e:
-        print(e)
 
-    try:
+    with pytest.raises(ValueError):
         switch_local_patterns("$temp")
-    except ValueError as e:
-        print(e)
 
 
 def test_rawstr():
@@ -414,10 +424,8 @@ def test_direct():
     assert pat20_1.execute(123).value() == 123
     assert pat20_1.execute("123").failed
     assert pat20_1.match(123) == 123
-    try:
+    with pytest.raises(MatchFailed):
         pat20_1.match("123")
-    except MatchFailed as e:
-        print(e)
     pat21 = DirectTypePattern(int)
     assert pat21.execute(123).value() == 123
     assert pat21.execute("123").failed

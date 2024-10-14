@@ -9,7 +9,8 @@
           "subtype": "error",
           "types": [
             "content",
-            "type"
+            "type",
+            "pattern_head_or_tail"
           ]
         }
       ]

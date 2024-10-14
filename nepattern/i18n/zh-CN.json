@@ -3,7 +3,8 @@
   "nepattern": {
     "error": {
       "content": "参数 {target!r} 不正确, 其应该符合 {expected!r}",
-        "type": "参数 {target!r} 的类型 {type} 不正确, 其应该是 {expected!r}"
+      "type": "参数 {target!r} 的类型 {type} 不正确, 其应该是 {expected!r}",
+      "pattern_head_or_tail": "不允许正则表达式 {target} 头尾部分使用 '^' 或 '$'"
     },
     "parse_reject": "{target} 校验失败"
   }

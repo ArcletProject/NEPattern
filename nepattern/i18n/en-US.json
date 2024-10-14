@@ -4,7 +4,8 @@
     "parse_reject": "validate {target} failed",
     "error": {
       "content": "parameter {target} is incorrect; expected {expected}",
-      "type": "type {type} of parameter {target} is incorrect; expected {expected}"
+      "type": "type {type} of parameter {target} is incorrect; expected {expected}",
+      "pattern_head_or_tail": "The head or tail of regular expression {target} is not allowed to use '^' or '$'"
     }
   }
 }

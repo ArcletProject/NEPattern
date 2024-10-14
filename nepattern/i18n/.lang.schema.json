@@ -29,6 +29,11 @@
               "title": "type",
               "description": "value of lang item type 'type'",
               "type": "string"
+            },
+            "pattern_head_or_tail": {
+              "title": "pattern_head_or_tail",
+              "description": "value of lang item type 'pattern_head_or_tail'",
+              "type": "string"
             }
           }
         }

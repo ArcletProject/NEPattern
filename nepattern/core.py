@@ -63,12 +63,12 @@ class Pattern(Generic[T]):
 
         @pat.convert
         def _(self, x: str):
-            mat = re.match(pattern, x)
+            mat = re.match(self.pattern, x) or re.search(self.pattern, x)
             if not mat:
                 raise MatchFailed(
-                    lang.require("nepattern", "error.content").format(target=x, expected=pattern)
+                    lang.require("nepattern", "error.content").format(target=x, expected=self.pattern)
                 )
-            return x
+            return mat[0]
 
         return pat
 
@@ -88,10 +88,10 @@ class Pattern(Generic[T]):
             def _(self, x):
                 if isinstance(x, origin):
                     return x
-                mat = re.match(pattern, x)
+                mat = re.match(self.pattern, x) or re.search(self.pattern, x)
                 if not mat:
                     raise MatchFailed(
-                        lang.require("nepattern", "error.content").format(target=x, expected=pattern)
+                        lang.require("nepattern", "error.content").format(target=x, expected=self.pattern)
                     )
                 return fn(mat)
 
@@ -100,10 +100,10 @@ class Pattern(Generic[T]):
 
             @pat.convert
             def _(self, x: str):
-                mat = re.match(pattern, x)
+                mat = re.match(self.pattern, x) or re.search(self.pattern, x)
                 if not mat:
                     raise MatchFailed(
-                        lang.require("nepattern", "error.content").format(target=x, expected=pattern)
+                        lang.require("nepattern", "error.content").format(target=x, expected=self.pattern)
                     )
                 return fn(mat)
 
@@ -213,4 +213,26 @@ class Pattern(Generic[T]):
 class _RegexPattern(Pattern[T]):
     def __init__(self, pattern: str | TPattern, origin: type[T], alias: str | None = None):
         super().__init__(origin, alias)
-        self.pattern = pattern
+        _pat = pattern if isinstance(pattern, str) else pattern.pattern
+        if _pat.startswith("^") or _pat.endswith("$"):
+            raise ValueError(lang.require("nepattern", "error.pattern_head_or_tail").format(target=pattern))
+        if isinstance(pattern, str):
+            self.pattern = f"^{pattern}$"
+        else:
+            self.pattern = re.compile(f"^{pattern.pattern}$", pattern.flags)
+
+    def prefixed(self):
+        new = self.copy()
+        if isinstance(self.pattern, str):
+            new.pattern = self.pattern[:-1]
+        else:  # pragma: no cover
+            new.pattern = re.compile(self.pattern.pattern[:-1], self.pattern.flags)
+        return new
+
+    def suffixed(self):
+        new = self.copy()
+        if isinstance(self.pattern, str):
+            new.pattern = self.pattern[1:]
+        else:  # pragma: no cover
+            new.pattern = re.compile(self.pattern.pattern[1:], self.pattern.flags)
+        return new
