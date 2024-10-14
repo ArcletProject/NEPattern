@@ -9,6 +9,7 @@ from tarina import Empty, generic_isinstance
 from tarina.lang import lang
 
 from .exception import MatchFailed
+from .util import TPattern
 
 T = TypeVar("T")
 
@@ -57,8 +58,8 @@ class ValidateResult(Generic[T]):
 
 class Pattern(Generic[T]):
     @staticmethod
-    def regex_match(pattern: str, alias: str | None = None):
-        pat = Pattern(str, alias)
+    def regex_match(pattern: str | TPattern, alias: str | None = None):
+        pat = Pattern(str, alias or str(pattern))
 
         @pat.convert
         def _(self, x: str):
@@ -79,7 +80,7 @@ class Pattern(Generic[T]):
         alias: str | None = None,
         allow_origin: bool = False,
     ):
-        pat = Pattern(origin, alias)
+        pat = Pattern(origin, alias or str(pattern))
         if allow_origin:
             pat.accept(Union[str, origin])
 
@@ -145,7 +146,7 @@ class Pattern(Generic[T]):
         self._post_validator = func
         return self
 
-    def convert(self, func: Callable[[Self, Any], T]):
+    def convert(self, func: Callable[[Self, Any], T | None]):
         self._converter = func
         return self
 
@@ -160,6 +161,10 @@ class Pattern(Generic[T]):
             )
         if self._converter:
             input_ = self._converter(self, input_)
+            if input_ is None:
+                raise MatchFailed(
+                    lang.require("nepattern", "error.content").format(target=input_, expected=self.origin)
+                )
         if self._post_validator and not self._post_validator(input_):
             raise MatchFailed(
                 lang.require("nepattern", "error.content").format(target=input_, expected=self.origin)

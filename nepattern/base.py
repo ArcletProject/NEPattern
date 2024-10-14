@@ -18,7 +18,32 @@ TDefault = TypeVar("TDefault")
 _T = TypeVar("_T")
 _T1 = TypeVar("_T1")
 
+_TP = TypeVar("_TP", bound=Pattern)
 
+
+def _SpecialPattern(cls: type[_TP]) -> type[_TP]:
+    old_init = cls.__init__
+
+    def __init__(self, *args, **kwargs):
+        old_init(self, *args, **kwargs)
+
+        @self.pre_validate
+        def _(x):
+            try:
+                self.match(x)
+                return True
+            except MatchFailed:
+                return False
+
+        @self.convert
+        def _(s, x):
+            return s.match(x)
+
+    cls.__init__ = __init__
+    return cls
+
+
+@_SpecialPattern
 class DirectPattern(Pattern[TOrigin]):
     """直接判断"""
 
@@ -40,8 +65,13 @@ class DirectPattern(Pattern[TOrigin]):
         return DirectPattern(self.target, self.alias)
 
 
+@_SpecialPattern
 class DirectTypePattern(Pattern[TOrigin]):
     """直接类型判断"""
+
+    def __init__(self, origin: type[TOrigin], alias: str | None = None):
+        self.origin = origin
+        super().__init__(origin, alias)
 
     def match(self, input_: Any):
         if not isinstance(input_, self.origin):
@@ -59,6 +89,7 @@ class DirectTypePattern(Pattern[TOrigin]):
         return DirectTypePattern(self.origin, self.alias)
 
 
+@_SpecialPattern
 class RegexPattern(Pattern[Match[str]]):
     """针对正则的特化匹配，支持正则组"""
 
@@ -87,6 +118,7 @@ class RegexPattern(Pattern[Match[str]]):
         return RegexPattern(self.pattern, self.alias)
 
 
+@_SpecialPattern
 class UnionPattern(Pattern[_T]):
     """多类型参数的匹配"""
 
@@ -143,6 +175,7 @@ _TCase = TypeVar("_TCase")
 _TSwtich = TypeVar("_TSwtich")
 
 
+@_SpecialPattern
 class SwitchPattern(Pattern[_TCase], Generic[_TCase, _TSwtich]):
     """匹配多种情况的表达式"""
 
@@ -171,6 +204,7 @@ class SwitchPattern(Pattern[_TCase], Generic[_TCase, _TSwtich]):
         return isinstance(other, SwitchPattern) and self.switch == other.switch
 
 
+@_SpecialPattern
 class ForwardRefPattern(Pattern[Any]):
     def __init__(self, ref: ForwardRef):
         self.ref = ref
@@ -196,6 +230,7 @@ class ForwardRefPattern(Pattern[Any]):
         return isinstance(other, ForwardRefPattern) and self.ref == other.ref
 
 
+@_SpecialPattern
 class AntiPattern(Pattern[TOrigin]):
     def __init__(self, pattern: Pattern[TOrigin]):
         self.base: Pattern[TOrigin] = pattern
@@ -220,6 +255,7 @@ ANY: Final[Pattern[Any]] = Pattern(alias="any")
 
 
 @final
+@_SpecialPattern
 class AnyStrPattern(Pattern[str]):
     def __init__(self):
         super().__init__(origin=str, alias="any_str")
@@ -236,6 +272,7 @@ AnyString: Final = AnyStrPattern()
 
 
 @final
+@_SpecialPattern
 class StrPattern(Pattern[str]):
     def __init__(self):
         super().__init__(origin=str, alias="str")
@@ -259,6 +296,7 @@ STRING: Final = StrPattern()
 
 
 @final
+@_SpecialPattern
 class BytesPattern(Pattern[bytes]):
     def __init__(self):
         super().__init__(origin=bytes, alias="bytes")
@@ -284,6 +322,7 @@ BYTES: Final = BytesPattern()
 
 
 @final
+@_SpecialPattern
 class IntPattern(Pattern[int]):
     def __init__(self):
         super().__init__(origin=int, alias="int")
@@ -309,6 +348,7 @@ INTEGER: Final = IntPattern()
 
 
 @final
+@_SpecialPattern
 class FloatPattern(Pattern[float]):
     def __init__(self):
         super().__init__(origin=float, alias="float")
@@ -332,6 +372,7 @@ FLOAT: Final = FloatPattern()
 
 
 @final
+@_SpecialPattern
 class NumberPattern(Pattern[Union[int, float]]):
     def __init__(self):
         super().__init__(origin=Union[int, float], alias="number")  # type: ignore
@@ -356,6 +397,7 @@ NUMBER: Final = NumberPattern()
 
 
 @final
+@_SpecialPattern
 class BoolPattern(Pattern[bool]):
     def __init__(self):
         super().__init__(origin=bool, alias="bool")
@@ -382,6 +424,7 @@ BOOLEAN: Final = BoolPattern()
 
 
 @final
+@_SpecialPattern
 class WideBoolPattern(Pattern[bool]):
     def __init__(self):
         super().__init__(origin=bool, alias="bool")
@@ -440,6 +483,7 @@ URL: Final = Pattern.regex_match(
 
 
 @final
+@_SpecialPattern
 class HexPattern(Pattern[int]):
     def __init__(self):
         super().__init__(origin=int, alias="hex")
@@ -470,6 +514,7 @@ HEX_COLOR = Pattern.regex_convert(r"(#[0-9a-fA-F]{6})", str, lambda m: m[1][1:],
 
 
 @final
+@_SpecialPattern
 class DateTimePattern(Pattern[datetime]):
     def __init__(self):
         super().__init__(origin=datetime, alias="datetime")
@@ -494,6 +539,7 @@ DATETIME: Final = DateTimePattern()
 
 
 @final
+@_SpecialPattern
 class PathPattern(Pattern[Path]):
     def __init__(self):
         super().__init__(origin=Path, alias="path")
