@@ -10,7 +10,7 @@ from contextlib import suppress
 from copy import deepcopy
 import inspect
 from types import FunctionType, LambdaType, MethodType
-from typing import Any, ForwardRef, Literal, TypeVar, Union, runtime_checkable
+from typing import Any, ForwardRef, Literal, TypeVar, Union, overload, runtime_checkable, Protocol
 from typing_extensions import Annotated, get_args, get_origin
 
 from tarina.lang import lang
@@ -61,8 +61,48 @@ def _protocol_parser(item: type):
     return Pattern(alias=f"{item}").accept(item)
 
 
+_T = TypeVar("_T")
+_K = TypeVar("_K")
+
+
+@overload
+def parser(item: TPattern, extra: str = "allow") -> RegexPattern: ...
+
+
+@overload
+def parser(item: list[_T] | tuple[_T, ...] | set[_T], extra: str = "allow") -> UnionPattern[_T]: ...
+
+
+@overload
+def parser(item: dict[_K, _T], extra: str = "allow") -> SwitchPattern[_T, _K]: ...
+
+
+@overload
+def parser(item: TypeVar, extra: str = "allow") -> Pattern[Any]: ...
+
+
+@overload
+def parser(item: type[Protocol], extra: str = "allow") -> Pattern[Any]: ...  # type: ignore
+
+
+@overload
+def parser(item: FunctionType | MethodType | LambdaType, extra: str = "allow") -> Pattern: ...
+
+
+@overload
+def parser(item: type[_T], extra: str = "allow") -> Pattern[_T]: ...
+
+
+@overload
+def parser(item: CUnionType, extra: str = "allow") -> UnionPattern[Any]: ...
+
+
+@overload
+def parser(item: _T, extra: str = "allow") -> Pattern[_T]: ...
+
+
 def parser(item: Any, extra: str = "allow") -> Pattern:
-    """对数类型的检查， 将一般数据类型转为 Pattern 或者特殊类型"""
+    """将一般数据类型转为 Pattern 或者特殊类型"""
     if isinstance(item, Pattern):
         return item
     with suppress(TypeError):

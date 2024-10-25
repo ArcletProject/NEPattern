@@ -5,7 +5,7 @@ from enum import Enum
 from pathlib import Path
 import re
 import sys
-from typing import Any, Callable, Final, ForwardRef, Generic, Match, TypeVar, Union, final
+from typing import Any, Callable, Final, ForwardRef, Generic, Match, TypeVar, Union, final, overload
 
 from tarina import DateParser, lang
 
@@ -17,6 +17,14 @@ TOrigin = TypeVar("TOrigin")
 TDefault = TypeVar("TDefault")
 _T = TypeVar("_T")
 _T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+_T3 = TypeVar("_T3")
+_T4 = TypeVar("_T4")
+_T5 = TypeVar("_T5")
+_T6 = TypeVar("_T6")
+_T7 = TypeVar("_T7")
+_T8 = TypeVar("_T8")
+_T9 = TypeVar("_T9")
 
 _TP = TypeVar("_TP", bound=Pattern)
 
@@ -161,6 +169,46 @@ class UnionPattern(Pattern[_T]):
         from .main import parser
 
         return cls([parser(i) for i in types])  # type: ignore
+
+    @classmethod
+    @overload
+    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], /) -> UnionPattern[_T1 | _T2]: ...
+
+    @classmethod
+    @overload
+    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], /) -> UnionPattern[_T1 | _T2 | _T3]: ...
+
+    @classmethod
+    @overload
+    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4]: ...
+
+    @classmethod
+    @overload
+    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5]: ...
+
+    @classmethod
+    @overload
+    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], pat6: Pattern[_T6], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6]: ...
+
+    @classmethod
+    @overload
+    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], pat6: Pattern[_T6], pat7: Pattern[_T7], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7]: ...
+
+    @classmethod
+    @overload
+    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], pat6: Pattern[_T6], pat7: Pattern[_T7], pat8: Pattern[_T8], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7 | _T8]: ...
+
+    @classmethod
+    @overload
+    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], pat6: Pattern[_T6], pat7: Pattern[_T7], pat8: Pattern[_T8], pat9: Pattern[_T9], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7 | _T8 | _T9]: ...
+
+    @classmethod
+    @overload
+    def with_(cls, *patterns: Pattern[_T]) -> UnionPattern[_T]: ...
+
+    @classmethod
+    def with_(cls, *patterns: Pattern) -> UnionPattern:
+        return cls(*patterns)
 
     def __repr__(self):
         return "|".join(repr(a) for a in (*self.for_validate, *self.for_equal))

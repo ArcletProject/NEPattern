@@ -170,20 +170,19 @@ def test_pattern_regex_convert():
 
 def test_pattern_type_convert():
     """测试 Pattern 的类型转换模式, 仅将传入对象变为另一类型的新对象"""
-    pat5 = Pattern(origin=str).convert(lambda _, x: str(x))
+    pat5 = Pattern(origin=str).accept(...).convert(lambda _, x: str(x))
     assert pat5.execute(123).value() == "123"
     assert pat5.execute([4, 5, 6]).value() == "[4, 5, 6]"
-    pat5_1 = Pattern(origin=int).convert(lambda _, x: int(x))
+    pat5_1 = Pattern(origin=int).accept(...).convert(lambda _, x: int(x))
     assert pat5_1.execute("123").value() == 123
     assert pat5_1.execute("123.0").failed
     print(pat5)
 
-    def convert(self, content):
+    def convert(_, content):
         if isinstance(content, str) and content.startswith("123"):
             return 123
-        raise ValueError(content)
 
-    pat5_3 = Pattern(origin=int).convert(convert)
+    pat5_3 = Pattern(origin=int).accept(str).convert(convert)
     assert pat5_3.execute("1234abcd").value() == 123
     assert pat5_3.execute("abc").failed
     prev = Pattern(origin=str).convert(lambda _, x: f"123{x}")
@@ -223,10 +222,18 @@ def test_pattern_anti():
 
 def test_pattern_validator():
     """测试 Pattern 的匹配后验证器, 会对匹配结果进行验证"""
-    pat9 = Pattern(int).accept(int).post_validate(lambda x: x > 0)
+    pat9 = Pattern(int).pre_validate(lambda x: x > 0).accept(int)
     assert pat9.execute(23).value() == 23
     assert pat9.execute(-23).failed
     print(pat9)
+
+
+def test_pattern_post_validator():
+    """测试 Pattern 的匹配后验证器, 会对转换后的结果进行验证"""
+    pat10 = Pattern(int).convert(lambda _, x: x + 1).post_validate(lambda x: x % 2 == 0)
+    assert pat10.execute(123).value() == 124
+    assert pat10.execute(122).failed
+    print(pat10)
 
 
 def test_parser():
@@ -299,7 +306,7 @@ def test_union_pattern():
     print(pat12, pat12_1, pat12_2)
     pat12_3 = UnionPattern.of(List[bool], int)
     print(pat12_3)
-    pat12_4 = UnionPattern(INTEGER, WIDE_BOOLEAN)
+    pat12_4 = UnionPattern.with_(INTEGER, WIDE_BOOLEAN)
     assert pat12_4.execute(123).success
     assert pat12_4.execute("123").success
     assert pat12_4.execute("123").value() == 123
@@ -468,6 +475,66 @@ def test_combine():
     assert pat23_1.execute(5).value() == 5
     assert pat23_1.execute(11).failed
     assert str(pat23_1) == "0~10"
+
+
+def test_funcs():
+    from dataclasses import dataclass
+    from nepattern.func import Index, Slice, Map, Filter, Reduce, Join, Upper, Lower, Sum, Step, Dot, GetItem
+
+    pat = Pattern(list[str], "chars").accept(str).convert(lambda _, x: list(x))
+    assert pat.execute("abcde").value() == ["a", "b", "c", "d", "e"]
+
+    pat24 = Index(pat, 2)
+    assert pat24.execute("abcde").value() == "c"
+
+    pat24_1 = Slice(pat, 1, 3)
+    assert pat24_1.execute("abcde").value() == ["b", "c"]
+
+    pat24_2 = Map(pat, lambda x: x.upper(), "str.upper")
+    assert pat24_2.execute("abcde").value() == ["A", "B", "C", "D", "E"]
+
+    pat24_3 = Filter(pat, lambda x: x in "aeiou", "vowels")
+    assert pat24_3.execute("abcde").value() == ["a", "e"]
+
+    pat24_4 = Filter(Map(pat, lambda x: x.upper(), "str.upper"), lambda x: x in "AEIOU", "vowels")
+    assert pat24_4.execute("abcde").value() == ["A", "E"]
+
+    pat24_5 = Reduce(pat24_2, lambda x, y: x + y, funcname="add")
+    assert pat24_5.execute("abcde").value() == "ABCDE"
+
+    pat24_6 = Join(pat, sep="-")
+    assert pat24_6.execute("abcde").value() == "a-b-c-d-e"
+
+    pat24_7 = Upper(pat24_6)
+    assert pat24_7.execute("abcde").value() == "A-B-C-D-E"
+
+    pat24_8 = Lower(pat24_7)
+    assert pat24_8.execute("abcde").value() == "a-b-c-d-e"
+
+    pat24_9 = Sum(Map(pat, ord))
+    assert pat24_9.execute("abcde").value() == 495
+
+    pat24_10 = Step(pat, len)
+    assert pat24_10.execute("abcde").value() == 5
+
+    pat24_11 = Step(pat, lambda x: x.count("a"), funcname="count_a")
+    assert pat24_11.execute("abcde").value() == 1
+
+    @dataclass
+    class Test:
+        a: int
+        b: str
+
+    pat1 = Pattern(Test)
+    obj = Test(123, "abc")
+    assert pat1.execute(obj).value() == obj
+
+    pat24_12 = Dot(pat1, int, "a")
+    assert pat24_12.execute(obj).value() == 123
+
+    pat2 = Pattern.on({"a": 123, "b": "abc"})
+    pat24_13 = GetItem(pat2, int, "a")
+    assert pat24_13.execute({"a": 123, "b": "abc"}).value() == 123
 
 
 if __name__ == "__main__":
