@@ -4,8 +4,6 @@ from collections import UserDict
 from contextvars import ContextVar, Token
 from typing import final
 
-from tarina import Empty
-
 from .base import NONE, UnionPattern
 
 
@@ -33,9 +31,9 @@ class Patterns(UserDict):
             else:
                 al_pat = self.data[k]
                 self.data[k] = (
-                    UnionPattern([*al_pat.base, target])
+                    UnionPattern(*al_pat.base, target)
                     if isinstance(al_pat, UnionPattern)
-                    else (UnionPattern([al_pat, target]))
+                    else (UnionPattern(al_pat, target))
                 )
 
     def sets(self, patterns, cover=True, no_alias=False):
@@ -49,15 +47,15 @@ class Patterns(UserDict):
     def remove(self, origin_type, alias=None):
         if alias and (al_pat := self.data.get(alias)):
             if isinstance(al_pat, UnionPattern):
-                self.data[alias] = UnionPattern(filter(lambda x: x.alias != alias, al_pat.base))  # type: ignore
+                self.data[alias] = UnionPattern(*filter(lambda x: x.alias != alias, al_pat.base))  # type: ignore
                 if not self.data[alias].base:  # type: ignore # pragma: no cover
                     del self.data[alias]
             else:
                 del self.data[alias]
         elif al_pat := self.data.get(origin_type):
-            if isinstance(al_pat, UnionPattern):
+            if isinstance(al_pat, UnionPattern):  # pragma: no cover
                 self.data[origin_type] = UnionPattern(
-                    filter(lambda x: x.origin != origin_type, al_pat.for_validate)
+                    *filter(lambda x: x.origin != origin_type, al_pat.for_validate)
                 )
                 if not self.data[origin_type].base:  # type: ignore # pragma: no cover
                     del self.data[origin_type]

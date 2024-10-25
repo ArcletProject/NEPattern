@@ -2,8 +2,6 @@
   "title": "Lang Schema",
   "description": "Schema for lang file",
   "type": "object",
-  "minProperties": 2,
-  "maxProperties": 2,
   "properties": {
     "nepattern": {
       "title": "Nepattern",
@@ -11,35 +9,33 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "type_error": {
-          "title": "type_error",
-          "description": "value of lang item type 'type_error'",
+        "parse_reject": {
+          "title": "parse_reject",
+          "description": "value of lang item type 'parse_reject'",
           "type": "string"
         },
-        "content_error": {
-          "title": "content_error",
-          "description": "value of lang item type 'content_error'",
-          "type": "string"
-        },
-        "validate_error": {
-          "title": "validate_error",
-          "description": "value of lang item type 'validate_error'",
-          "type": "string"
-        },
-        "sequence_form_error": {
-          "title": "sequence_form_error",
-          "description": "value of lang item type 'sequence_form_error'",
-          "type": "string"
-        },
-        "validate_reject": {
-          "title": "validate_reject",
-          "description": "value of lang item type 'validate_reject'",
-          "type": "string"
-        },
-        "pattern_head_or_tail_error": {
-          "title": "pattern_head_or_tail_error",
-          "description": "value of lang item type 'pattern_head_or_tail_error'",
-          "type": "string"
+        "error": {
+          "title": "Error",
+          "description": "Scope 'error' of lang item",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "title": "content",
+              "description": "value of lang item type 'content'",
+              "type": "string"
+            },
+            "type": {
+              "title": "type",
+              "description": "value of lang item type 'type'",
+              "type": "string"
+            },
+            "pattern_head_or_tail": {
+              "title": "pattern_head_or_tail",
+              "description": "value of lang item type 'pattern_head_or_tail'",
+              "type": "string"
+            }
+          }
         }
       }
     }

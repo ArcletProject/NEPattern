@@ -3,18 +3,16 @@ from __future__ import annotations
 from functools import reduce
 from typing import Any, Callable, Protocol, TypeVar, overload
 
-from tarina import Empty
-
-from .core import TMM, BasePattern, MatchMode, TInput
+from .core import Pattern
 
 T = TypeVar("T")
 T1 = TypeVar("T1")
 
 
 def Index(
-    pat: BasePattern[list[T], TInput, TMM],
+    pat: Pattern[list[T]],
     index: int,
-) -> BasePattern[T, TInput, TMM]:
+) -> Pattern[T]:
     _new = pat.copy()
     _match = _new.match
 
@@ -22,17 +20,17 @@ def Index(
         return _match(input_)[index]
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{_new._repr}[{index}]"
-    _new.refresh()
+    _new.alias = f"{_new}[{index}]"
+    
     return _new  # type: ignore
 
 
 def Slice(
-    pat: BasePattern[list[T], TInput, TMM],
+    pat: Pattern[list[T]],
     start: int | None = None,
     end: int | None = None,
     step: int = 1,
-) -> BasePattern[list[T], TInput, TMM]:
+) -> Pattern[list[T]]:
     if start is None and end is None:
         return pat
     _new = pat.copy()
@@ -50,16 +48,16 @@ def Slice(
         _slice = f":{end}"
     if step != 1:
         _slice += f":{step}"
-    _new.alias = f"{_new._repr}[{_slice}]"
-    _new.refresh()
+    _new.alias = f"{_new}[{_slice}]"
+    
     return _new
 
 
 def Map(
-    pat: BasePattern[list[T], TInput, TMM],
+    pat: Pattern[list[T]],
     func: Callable[[T], T1],
     funcname: str | None = None,
-) -> BasePattern[list[T1], TInput, TMM]:
+) -> Pattern[list[T1]]:
     _new = pat.copy()
     _match = _new.match
 
@@ -67,16 +65,16 @@ def Map(
         return list(map(func, _match(input_)))
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{_new._repr}.map({funcname or func.__name__})"
-    _new.refresh()
+    _new.alias = f"{_new}.map({funcname or func.__name__})"
+    
     return _new  # type: ignore
 
 
 def Filter(
-    pat: BasePattern[list[T], TInput, TMM],
+    pat: Pattern[list[T]],
     func: Callable[[T], bool],
     funcname: str | None = None,
-) -> BasePattern[list[T], TInput, TMM]:
+) -> Pattern[list[T]]:
     _new = pat.copy()
     _match = _new.match
 
@@ -84,8 +82,8 @@ def Filter(
         return list(filter(func, _match(input_)))
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{_new._repr}.filter({funcname or func.__name__})"
-    _new.refresh()
+    _new.alias = f"{_new}.filter({funcname or func.__name__})"
+    
     return _new
 
 
@@ -108,8 +106,8 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
 
 
 def Sum(
-    pat: BasePattern[list[_SupportsSumNoDefaultT], TInput, TMM]
-) -> BasePattern[_SupportsSumNoDefaultT, TInput, TMM]:
+    pat: Pattern[list[_SupportsSumNoDefaultT]]
+) -> Pattern[_SupportsSumNoDefaultT]:
     _new = pat.copy()
     _match = _new.match
 
@@ -117,35 +115,35 @@ def Sum(
         return sum(_match(input_))
 
     _new.match = match.__get__(_new)
-    _new.alias = f"sum({_new._repr})"
-    _new.refresh()
+    _new.alias = f"sum({_new})"
+    
     return _new  # type: ignore
 
 
 @overload
 def Reduce(
-    pat: BasePattern[list[T], TInput, TMM],
+    pat: Pattern[list[T]],
     func: Callable[[T, T], T],
     initializer: None = ...,
     funcname: str | None = ...,
-) -> BasePattern[T, TInput, TMM]: ...
+) -> Pattern[T]: ...
 
 
 @overload
 def Reduce(
-    pat: BasePattern[list[T], TInput, TMM],
+    pat: Pattern[list[T]],
     func: Callable[[T1, T], T1],
     initializer: T1,
     funcname: str | None = ...,
-) -> BasePattern[T1, TInput, TMM]: ...
+) -> Pattern[T1]: ...
 
 
 def Reduce(
-    pat: BasePattern[list[T], TInput, TMM],
+    pat: Pattern[list[T]],
     func: Callable[[T, T], T] | Callable[[T1, T], T1],
     initializer: T1 | None = None,
     funcname: str | None = None,
-) -> BasePattern[T, TInput, TMM] | BasePattern[T1, TInput, TMM]:
+) -> Pattern:
     _new = pat.copy()
     _match = _new.match
 
@@ -153,15 +151,15 @@ def Reduce(
         return reduce(func, _match(input_), initializer) if initializer is not None else reduce(func, _match(input_))  # type: ignore
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{_new._repr}.reduce({funcname or func.__name__})"
-    _new.refresh()
+    _new.alias = f"{_new}.reduce({funcname or func.__name__})"
+    
     return _new  # type: ignore
 
 
 def Join(
-    pat: BasePattern[list[str], TInput, TMM],
+    pat: Pattern[list[str]],
     sep: str,
-) -> BasePattern[str, TInput, TMM]:
+) -> Pattern[str]:
     _new = pat.copy()
     _match = _new.match
 
@@ -169,14 +167,14 @@ def Join(
         return sep.join(_match(input_))
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{_new._repr}.join({sep!r})"
-    _new.refresh()
+    _new.alias = f"{_new}.join({sep!r})"
+    
     return _new  # type: ignore
 
 
 def Upper(
-    pat: BasePattern[str, TInput, TMM],
-) -> BasePattern[str, TInput, TMM]:
+    pat: Pattern[str],
+) -> Pattern[str]:
     _new = pat.copy()
     _match = _new.match
 
@@ -184,14 +182,14 @@ def Upper(
         return _match(input_).upper()
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{_new._repr}.upper()"
-    _new.refresh()
+    _new.alias = f"{_new}.upper()"
+    
     return _new  # type: ignore
 
 
 def Lower(
-    pat: BasePattern[str, TInput, TMM],
-) -> BasePattern[str, TInput, TMM]:
+    pat: Pattern[str],
+) -> Pattern[str]:
     _new = pat.copy()
     _match = _new.match
 
@@ -199,17 +197,17 @@ def Lower(
         return _match(input_).lower()
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{_new._repr}.lower()"
-    _new.refresh()
+    _new.alias = f"{_new}.lower()"
+    
     return _new  # type: ignore
 
 
 def Dot(
-    pat: BasePattern[Any, TInput, TMM],
+    pat: Pattern[Any],
     origin: type[T],
     key: str,
     default: T | None = None,
-) -> BasePattern[T, TInput, TMM]:
+) -> Pattern[T]:
     _new = pat.copy()
     _match = _new.match
 
@@ -217,43 +215,43 @@ def Dot(
         return getattr(_match(input_), key, default)
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{_new._repr}.{key}"
-    _new.refresh()
+    _new.alias = f"{_new}.{key}"
+    
     _new.origin = origin
     return _new  # type: ignore
 
 
 def GetItem(
-    pat: BasePattern[Any, TInput, TMM],
+    pat: Pattern[Any],
     origin: type[T],
     key: str,
     default: T | None = None,
-) -> BasePattern[T, TInput, TMM]:
+) -> Pattern[T]:
     _new = pat.copy()
     _match = _new.match
 
     def match(self, input_) -> T:
         try:
             return _match(input_)[key]
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             if default is not None:
                 return default
             raise e
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{_new._repr}.{key}"
-    _new.refresh()
+    _new.alias = f"{_new}.{key}"
+    
     _new.origin = origin
     return _new  # type: ignore
 
 
 def Step(
-    pat: BasePattern[T, TInput, TMM],
+    pat: Pattern[T],
     func: Callable[[T], T1],
     *args,
     funcname: str | None = None,
     **kwargs,
-) -> BasePattern[T1, TInput, TMM]:
+) -> Pattern[T1]:
     _new = pat.copy()
     _match = _new.match
 
@@ -261,6 +259,6 @@ def Step(
         return func(_match(input_), *args, **kwargs)
 
     _new.match = match.__get__(_new)
-    _new.alias = f"{funcname or func.__name__}({_new._repr})"
-    _new.refresh()
+    _new.alias = f"{funcname or func.__name__}({_new})"
+    
     return _new  # type: ignore
