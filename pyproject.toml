@@ -56,7 +56,7 @@ test = {composite = ["coverage run -m pytest -vv", "coverage xml", "coverage rep
 [tool.coverage.run]
 branch = true
 source = ["."]
-omit = ["test.py", "./nepattern/context.pyi"]
+omit = ["test.py", "./nepattern/*.pyi", "./nepattern/func.py"]
 
 [tool.coverage.report]
 

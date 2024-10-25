@@ -2,9 +2,9 @@
 branch = True
 source = .
 omit =
-    ./exam.py
+    ./exam*.py
     ./test.py
-    ./nepattern/context.pyi
+    ./nepattern/func.py
     ./nepattern/*.pyi
 
 [report]

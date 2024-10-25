@@ -233,7 +233,7 @@ def GetItem(
     def match(self, input_) -> T:
         try:
             return _match(input_)[key]
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             if default is not None:
                 return default
             raise e
