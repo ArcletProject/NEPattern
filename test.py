@@ -290,7 +290,7 @@ def test_parser():
 
 
 def test_union_pattern():
-    from typing import List, Optional, Union
+    from typing import List, Optional, Union, Annotated
 
     pat12 = parser(Union[int, bool])
     assert pat12.execute(123).success
@@ -386,12 +386,17 @@ def test_regex_pattern():
 
 
 def test_switch_pattern():
+    from typing import Annotated
+
     pat19 = SwitchPattern({"foo": 1, "bar": 2})
     assert pat19.execute("foo").value() == 1
     assert pat19.execute("baz").failed
     pat19_1 = SwitchPattern({"foo": 1, "bar": 2, ...: 3})
     assert pat19_1.execute("foo").value() == 1
     assert pat19_1.execute("baz").value() == 3
+    pat19_2 = parser(Annotated[int, {"foo": 1, "bar": 2}])
+    assert pat19_2.execute("foo").value() == 1
+    assert pat19_2.execute("baz").failed
 
 
 def test_patterns():

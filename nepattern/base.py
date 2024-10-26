@@ -5,7 +5,8 @@ from enum import Enum
 from pathlib import Path
 import re
 import sys
-from typing import Any, Callable, Final, ForwardRef, Generic, Match, TypeVar, Union, final, overload
+from types import MethodType
+from typing import Any, Callable, Final, ForwardRef, Generic, Match, TypeVar, Union, final, overload, cast
 
 from tarina import DateParser, lang
 
@@ -148,7 +149,7 @@ class UnionPattern(Pattern[_T]):
                 self.for_validate.append(arg)
             else:
                 self.for_equal.append(arg)
-        alias_content = "|".join([repr(a) for a in self.for_validate] + [repr(a) for a in self.for_equal])
+        alias_content = "|".join([str(a) for a in self.for_validate] + [repr(a) for a in self.for_equal])
         types = [i.origin for i in self.for_validate] + [type(i) for i in self.for_equal]
         super().__init__(Union.__getitem__(tuple(types)), alias=alias_content)  # type: ignore
 
@@ -168,7 +169,7 @@ class UnionPattern(Pattern[_T]):
     def of(cls, *types: type[_T1]) -> UnionPattern[_T1]:
         from .main import parser
 
-        return cls([parser(i) for i in types])  # type: ignore
+        return cls(*[parser(i) for i in types])  # type: ignore
 
     @classmethod
     @overload
@@ -507,10 +508,10 @@ class WideBoolPattern(Pattern[bool]):
 WIDE_BOOLEAN = WideBoolPattern()
 """宽松布尔表达式，可以接受更多的布尔样式的量"""
 
-LIST: Final[Pattern[list]] = Pattern.regex_convert(r"(\[.+?\])", list, lambda m: eval(m[1]), alias="list")
-TUPLE: Final[Pattern[tuple]] = Pattern.regex_convert(r"(\(.+?\))", tuple, lambda m: eval(m[1]), alias="tuple")
-SET: Final[Pattern[set]] = Pattern.regex_convert(r"(\{.+?\})", set, lambda m: eval(m[1]), alias="set")
-DICT: Final[Pattern[dict]] = Pattern.regex_convert(r"(\{.+?\})", dict, lambda m: eval(m[1]), alias="dict")
+LIST: Final[Pattern[list]] = Pattern.regex_convert(r"(\[.+?\])", list, lambda m: eval(m[1]), alias="list", allow_origin=True)
+TUPLE: Final[Pattern[tuple]] = Pattern.regex_convert(r"(\(.+?\))", tuple, lambda m: eval(m[1]), alias="tuple", allow_origin=True)
+SET: Final[Pattern[set]] = Pattern.regex_convert(r"(\{.+?\})", set, lambda m: eval(m[1]), alias="set", allow_origin=True)
+DICT: Final[Pattern[dict]] = Pattern.regex_convert(r"(\{.+?\})", dict, lambda m: eval(m[1]), alias="dict", allow_origin=True)
 
 EMAIL: Final = Pattern.regex_match(r"(?:[\w\.+-]+)@(?:[\w\.-]+)\.(?:[\w\.-]+)", alias="email")
 """匹配邮箱地址的表达式"""
@@ -623,19 +624,19 @@ def combine(
 ) -> Pattern[_T]:
     _new = current.copy()
     if previous:
-        _match = _new.match
+        _match = cast(MethodType, _new.match).__func__
 
         def match(self, input_):
-            return _match(previous.match(input_))
+            return _match(self, previous.match(input_))
 
         _new.match = match.__get__(_new)
     if alias:
         _new.alias = alias
     if validator:
-        _match = _new.match
+        _match = cast(MethodType, _new.match).__func__
 
         def match(self, input_):
-            res = _match(input_)
+            res = _match(self, input_)
             if not validator(res):
                 raise MatchFailed(
                     lang.require("nepattern", "error.content").format(target=input_, expected=alias)

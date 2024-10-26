@@ -51,12 +51,12 @@ dev = [
 ]
 
 [tool.pdm.scripts]
-test = {composite = ["coverage run -m pytest -vv", "coverage xml", "coverage report"]}
+test = {composite = ["coverage run --rcfile=pyproject.toml -m pytest -vv", "coverage xml", "coverage report -m"]}
 
 [tool.coverage.run]
 branch = true
 source = ["."]
-omit = ["test.py", "./nepattern/*.pyi", "./nepattern/func.py"]
+omit = ["test.py", "./nepattern/*.pyi", "./nepattern/func.py", "exam*.py"]
 
 [tool.coverage.report]
 
@@ -77,7 +77,6 @@ exclude_lines = [
     "def __repr__",
     "def __str__",
     "def __eq__",
-    "def __calc_eq__",
     "except ImportError:",
 ]
 
@@ -86,7 +85,7 @@ python_files = "test.py"
 
 [tool.black]
 line-length = 110
-target-version = ["py39", "py310", "py311", "py312", "py313"]
+target-version = ["py39", "py310", "py311", "py312"]
 include = '\.pyi?$'
 extend-exclude = '''
 '''

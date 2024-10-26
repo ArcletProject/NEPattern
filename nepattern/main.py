@@ -10,6 +10,7 @@ from contextlib import suppress
 from copy import deepcopy
 import inspect
 from types import FunctionType, LambdaType, MethodType
+import typing
 from typing import Any, ForwardRef, Literal, TypeVar, Union, overload, runtime_checkable, Protocol
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -37,6 +38,8 @@ def _generic_parser(item: GenericAlias, extra: str) -> Pattern:  # type: ignore
     origin = get_origin(item)
     if origin is Annotated:
         org, *meta = get_args(item)
+        if switch := next((i for i in meta if isinstance(i, dict)), None):
+            return SwitchPattern(switch)
         if not isinstance(_o := parser(org, extra), Pattern):  # type: ignore  # pragma: no cover
             raise TypeError(_o)
         validators = [i for i in meta if callable(i)]
@@ -48,7 +51,9 @@ def _generic_parser(item: GenericAlias, extra: str) -> Pattern:  # type: ignore
     if origin in _Contents:
         _args = {parser(t, extra) for t in get_args(item)}
         return (_args.pop() if len(_args) == 1 else UnionPattern(*_args)) if _args else ANY
-    return Pattern(origin=origin, alias=f"{repr(item).split('.')[-1]}").accept(origin)
+    if origin in (list, tuple, set, dict):
+        item = origin[get_args(item)]
+    return Pattern(origin=item, alias=f"{repr(item).split('.')[-1]}").accept(item)
 
 
 def _typevar_parser(item: TypeVar):

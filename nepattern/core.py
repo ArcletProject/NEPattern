@@ -222,7 +222,7 @@ class Pattern(Generic[T]):
         return self
 
     def __hash__(self):
-        return id((self.origin, self.alias, self._accepts, self._converter))
+        return hash((self.origin, self.alias, self._accepts, self._converter))
 
     def __eq__(self, other):
         return isinstance(other, Pattern) and self.__hash__() == other.__hash__()

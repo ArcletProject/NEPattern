@@ -47,8 +47,6 @@ from .main import parser as parser
 from .util import RawStr as RawStr
 from .util import TPattern as TPattern
 
-type_parser = parser
-
 global_patterns().update(
     {
         Any: ANY,
