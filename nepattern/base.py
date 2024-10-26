@@ -146,7 +146,10 @@ class UnionPattern(Pattern[_T]):
                 self.optional = True
                 self.for_equal.append(None)
             elif isinstance(arg, Pattern):
-                self.for_validate.append(arg)
+                if isinstance(arg, DirectPattern):
+                    self.for_equal.append(arg.target)
+                else:
+                    self.for_validate.append(arg)
             else:
                 self.for_equal.append(arg)
         alias_content = "|".join([str(a) for a in self.for_validate] + [repr(a) for a in self.for_equal])
