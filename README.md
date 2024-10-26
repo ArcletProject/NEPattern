@@ -10,12 +10,13 @@
 ## 简单实例
 
 ```python
-from nepattern import BasePattern
+from nepattern import Pattern
 
 
-pat = BasePattern.of(int)
-assert pat.validate(13).success
-assert not 13.0 >> pat
+pat = Pattern(str).accept(int).convert(lambda _, x: str(x))
+assert pat.execute(13).success
+assert pat.execute(42).value() == '42'
+assert not pat << 13.0
 ```
 
 ## 特点

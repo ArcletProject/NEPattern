@@ -208,7 +208,7 @@ class Pattern(Generic[T]):
     def copy(self) -> Self:
         return deepcopy(self)
 
-    def __rrshift__(self, other):  # pragma: no cover
+    def __lshift__(self, other):  # pragma: no cover
         return self.execute(other)
 
     def __rmatmul__(self, other) -> Self:  # pragma: no cover

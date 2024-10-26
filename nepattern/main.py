@@ -51,7 +51,7 @@ def _generic_parser(item: GenericAlias, extra: str) -> Pattern:  # type: ignore
     if origin in _Contents:
         _args = {parser(t, extra) for t in get_args(item)}
         return (_args.pop() if len(_args) == 1 else UnionPattern(*_args)) if _args else ANY
-    if origin in (list, tuple, set, dict):
+    if origin in (list, tuple, set, dict, type, frozenset):
         item = origin[get_args(item)]
     return Pattern(origin=item, alias=f"{repr(item).split('.')[-1]}").accept(item)
 

@@ -237,7 +237,7 @@ def test_pattern_post_validator():
 
 
 def test_parser():
-    from typing import Literal, Protocol, Type, TypeVar
+    from typing import Literal, Protocol, Type, TypeVar, Sequence
     from typing_extensions import Annotated
 
     pat11 = parser(int)
@@ -247,7 +247,7 @@ def test_parser():
     pat11_2 = parser(int)
     assert pat11_2 == pat11
     assert isinstance(parser(Literal["a", "b"]), UnionPattern)
-    assert parser(Type[int]).origin is type
+    assert parser(Type[int]).origin == type[int]
     assert parser(complex) != Pattern(complex)
     assert isinstance(parser("a|b|c"), UnionPattern)
     assert isinstance(parser("re:a|b|c"), Pattern)
@@ -287,6 +287,10 @@ def test_parser():
     pat11_7 = parser(TestT)
     assert pat11_7.execute("abc").success
     assert pat11_7.execute([]).failed
+
+    pat11_8 = parser(Sequence[int])
+    assert pat11_8.execute([1, 2, 3]).success
+    assert pat11_8.execute((1, 2, 3)).success
 
 
 def test_union_pattern():
