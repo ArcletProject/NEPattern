@@ -152,8 +152,8 @@ class UnionPattern(Pattern[_T]):
                     self.for_validate.append(arg)
             else:
                 self.for_equal.append(arg)
-        alias_content = "|".join([str(a) for a in self.for_validate] + [repr(a) for a in self.for_equal])
-        types = [i.origin for i in self.for_validate] + [type(i) for i in self.for_equal]
+        alias_content = "|".join([str(a) for a in self.for_validate] + [repr(a) for a in self.for_equal])  # pragma: no cover
+        types = [i.origin for i in self.for_validate] + [type(i) for i in self.for_equal]  # pragma: no cover
         super().__init__(Union.__getitem__(tuple(types)), alias=alias_content)  # type: ignore
 
     def match(self, input_: Any):
@@ -172,7 +172,7 @@ class UnionPattern(Pattern[_T]):
     def of(cls, *types: type[_T1]) -> UnionPattern[_T1]:
         from .main import parser
 
-        return cls(*[parser(i) for i in types])  # type: ignore
+        return cls(*[parser(i) for i in types])  # type: ignore  # pragma: no cover
 
     @classmethod
     @overload

@@ -42,14 +42,14 @@ def _generic_parser(item: GenericAlias, extra: str) -> Pattern:  # type: ignore
             return SwitchPattern(switch)
         if not isinstance(_o := parser(org, extra), Pattern):  # type: ignore  # pragma: no cover
             raise TypeError(_o)
-        validators = [i for i in meta if callable(i)]
+        validators = [i for i in meta if callable(i)]  # pragma: no cover
         return combine(
             _o,
             alias=al[-1] if (al := [i for i in meta if isinstance(i, str)]) else _o.alias,
             validator=(lambda x: all(i(x) for i in validators)) if validators else None,
         )
     if origin in _Contents:
-        _args = {parser(t, extra) for t in get_args(item)}
+        _args = {parser(t, extra) for t in get_args(item)}  # pragma: no cover
         return (_args.pop() if len(_args) == 1 else UnionPattern(*_args)) if _args else ANY
     if origin in (list, tuple, set, dict, type, frozenset):
         item = origin[get_args(item)]

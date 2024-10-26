@@ -1,6 +1,6 @@
 [project]
 name = "nepattern"
-version = "0.8.0"
+version = "1.0.0"
 description = "a complex pattern, support typing"
 authors = [
     {name = "RF-Tar-Railt", email = "rf_tar_railt@qq.com"},
