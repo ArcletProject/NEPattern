@@ -425,6 +425,9 @@ def test_patterns():
     with pytest.raises(ValueError):
         switch_local_patterns("$temp")
 
+    with pytest.raises(KeyError):
+        switch_local_patterns("temp2")
+
 
 def test_rawstr():
     assert parser("url") == URL
