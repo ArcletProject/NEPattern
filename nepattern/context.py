@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import UserDict
-from contextvars import ContextVar, Token
 from typing import final
 
 from .base import NONE, UnionPattern
@@ -64,10 +63,7 @@ class Patterns(UserDict):
 
 
 _ctx = {"$global": Patterns("$global")}
-_ctx_token: Token
-
-pattern_ctx: ContextVar[Patterns] = ContextVar("nepatterns")
-_ctx_token = pattern_ctx.set(_ctx["$global"])
+_current = "$global"
 
 
 def create_local_patterns(name, data=None, set_current=True) -> Patterns:
@@ -79,37 +75,34 @@ def create_local_patterns(name, data=None, set_current=True) -> Patterns:
         data: 可选的初始内容
         set_current: 是否设置为 current
     """
-    global _ctx_token
+    global _current
     if name.startswith("$"):
         raise ValueError(name)
     new = Patterns(name)
     new.update(data or {})
     _ctx[name] = new
     if set_current:
-        pattern_ctx.reset(_ctx_token)
-        _ctx_token = pattern_ctx.set(new)
+        _current = name
     return new
 
 
 def switch_local_patterns(name):
-    global _ctx_token
+    global _current
     if name.startswith("$"):
         raise ValueError(name)
-    target = _ctx[name]
-    pattern_ctx.reset(_ctx_token)
-    _ctx_token = pattern_ctx.set(target)
+    if name not in _ctx:
+        raise KeyError(name)
+    _current = name
 
 
 def reset_local_patterns():
-    global _ctx_token
+    global _current
 
-    target = _ctx["$global"]
-    pattern_ctx.reset(_ctx_token)
-    _ctx_token = pattern_ctx.set(target)
+    _current = "$global"
 
 
 def local_patterns():
-    local = pattern_ctx.get()
+    local = _ctx[_current]
     return local if local.name != "$global" else Patterns("$temp")
 
 
