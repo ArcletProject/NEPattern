@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 import re
-from typing import Any, Callable, Generic, TypeVar, Union, overload
-from typing_extensions import Self
+from typing import Any, Callable, Generic, TypeVar, Union, cast, overload
+from typing_extensions import Self, TypeForm
 
 from tarina import Empty, generic_isinstance
 from tarina.lang import lang
@@ -81,7 +81,7 @@ class Pattern(Generic[T]):
     @staticmethod
     def regex_convert(
         pattern: str,
-        origin: type[_T],
+        origin: TypeForm[_T],
         fn: Callable[[re.Match[str]], _T],
         alias: str | None = None,
         allow_origin: bool = False,
@@ -93,7 +93,7 @@ class Pattern(Generic[T]):
 
             @pat.convert
             def _(self: _RegexPattern, x):
-                if isinstance(x, origin):
+                if isinstance(x, cast(type[_T], origin)):
                     return x
                 mat = re.match(self.pattern, x) or re.search(self.pattern, x)
                 if not mat:
@@ -124,12 +124,12 @@ class Pattern(Generic[T]):
         return DirectPattern(obj)
 
     @overload
-    def __init__(self, origin: type[T], alias: str | None = None): ...
+    def __init__(self, origin: TypeForm[T], alias: str | None = None): ...
 
     @overload
     def __init__(self: Pattern[Any], *, alias: str | None = None): ...
 
-    def __init__(self, origin: type[T] | None = None, alias: str | None = None):
+    def __init__(self, origin: Any | None = None, alias: str | None = None):
         self.origin: type[T] = origin or Any  # type: ignore
         self.alias = alias
 
@@ -229,7 +229,7 @@ class Pattern(Generic[T]):
 
 
 class _RegexPattern(Pattern[T]):
-    def __init__(self, pattern: str | TPattern, origin: type[T], alias: str | None = None):
+    def __init__(self, pattern: str | TPattern, origin: TypeForm[T], alias: str | None = None):
         super().__init__(origin, alias)
         _pat = pattern if isinstance(pattern, str) else pattern.pattern
         if _pat.startswith("^") or _pat.endswith("$"):

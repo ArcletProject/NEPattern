@@ -6,7 +6,8 @@ from pathlib import Path
 import re
 import sys
 from types import MethodType
-from typing import Any, Callable, Final, ForwardRef, Generic, Match, TypeVar, Union, final, overload, cast
+from typing import Any, Callable, Final, ForwardRef, Generic, Match, TypeVar, Union, cast, final, overload
+from typing_extensions import TypeForm
 
 from tarina import DateParser, lang
 
@@ -152,7 +153,9 @@ class UnionPattern(Pattern[_T]):
                     self.for_validate.append(arg)
             else:
                 self.for_equal.append(arg)
-        alias_content = "|".join([str(a) for a in self.for_validate] + [repr(a) for a in self.for_equal])  # pragma: no cover
+        alias_content = "|".join(
+            [str(a) for a in self.for_validate] + [repr(a) for a in self.for_equal]
+        )  # pragma: no cover
         types = [i.origin for i in self.for_validate] + [type(i) for i in self.for_equal]  # pragma: no cover
         super().__init__(Union.__getitem__(tuple(types)), alias=alias_content)  # type: ignore
 
@@ -169,7 +172,7 @@ class UnionPattern(Pattern[_T]):
         return input_
 
     @classmethod
-    def of(cls, *types: type[_T1]) -> UnionPattern[_T1]:
+    def of(cls, *types: TypeForm[_T1]) -> UnionPattern[_T1]:
         from .main import parser
 
         return cls(*[parser(i) for i in types])  # type: ignore  # pragma: no cover
@@ -180,31 +183,85 @@ class UnionPattern(Pattern[_T]):
 
     @classmethod
     @overload
-    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], /) -> UnionPattern[_T1 | _T2 | _T3]: ...
+    def with_(
+        cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], /
+    ) -> UnionPattern[_T1 | _T2 | _T3]: ...
 
     @classmethod
     @overload
-    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4]: ...
+    def with_(
+        cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], /
+    ) -> UnionPattern[_T1 | _T2 | _T3 | _T4]: ...
 
     @classmethod
     @overload
-    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5]: ...
+    def with_(
+        cls,
+        pat1: Pattern[_T1],
+        pat2: Pattern[_T2],
+        pat3: Pattern[_T3],
+        pat4: Pattern[_T4],
+        pat5: Pattern[_T5],
+        /,
+    ) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5]: ...
 
     @classmethod
     @overload
-    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], pat6: Pattern[_T6], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6]: ...
+    def with_(
+        cls,
+        pat1: Pattern[_T1],
+        pat2: Pattern[_T2],
+        pat3: Pattern[_T3],
+        pat4: Pattern[_T4],
+        pat5: Pattern[_T5],
+        pat6: Pattern[_T6],
+        /,
+    ) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6]: ...
 
     @classmethod
     @overload
-    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], pat6: Pattern[_T6], pat7: Pattern[_T7], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7]: ...
+    def with_(
+        cls,
+        pat1: Pattern[_T1],
+        pat2: Pattern[_T2],
+        pat3: Pattern[_T3],
+        pat4: Pattern[_T4],
+        pat5: Pattern[_T5],
+        pat6: Pattern[_T6],
+        pat7: Pattern[_T7],
+        /,
+    ) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7]: ...
 
     @classmethod
     @overload
-    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], pat6: Pattern[_T6], pat7: Pattern[_T7], pat8: Pattern[_T8], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7 | _T8]: ...
+    def with_(
+        cls,
+        pat1: Pattern[_T1],
+        pat2: Pattern[_T2],
+        pat3: Pattern[_T3],
+        pat4: Pattern[_T4],
+        pat5: Pattern[_T5],
+        pat6: Pattern[_T6],
+        pat7: Pattern[_T7],
+        pat8: Pattern[_T8],
+        /,
+    ) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7 | _T8]: ...
 
     @classmethod
     @overload
-    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], pat4: Pattern[_T4], pat5: Pattern[_T5], pat6: Pattern[_T6], pat7: Pattern[_T7], pat8: Pattern[_T8], pat9: Pattern[_T9], /) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7 | _T8 | _T9]: ...
+    def with_(
+        cls,
+        pat1: Pattern[_T1],
+        pat2: Pattern[_T2],
+        pat3: Pattern[_T3],
+        pat4: Pattern[_T4],
+        pat5: Pattern[_T5],
+        pat6: Pattern[_T6],
+        pat7: Pattern[_T7],
+        pat8: Pattern[_T8],
+        pat9: Pattern[_T9],
+        /,
+    ) -> UnionPattern[_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7 | _T8 | _T9]: ...
 
     @classmethod
     @overload
@@ -511,10 +568,18 @@ class WideBoolPattern(Pattern[bool]):
 WIDE_BOOLEAN = WideBoolPattern()
 """宽松布尔表达式，可以接受更多的布尔样式的量"""
 
-LIST: Final[Pattern[list]] = Pattern.regex_convert(r"(\[.+?\])", list, lambda m: eval(m[1]), alias="list", allow_origin=True)
-TUPLE: Final[Pattern[tuple]] = Pattern.regex_convert(r"(\(.+?\))", tuple, lambda m: eval(m[1]), alias="tuple", allow_origin=True)
-SET: Final[Pattern[set]] = Pattern.regex_convert(r"(\{.+?\})", set, lambda m: eval(m[1]), alias="set", allow_origin=True)
-DICT: Final[Pattern[dict]] = Pattern.regex_convert(r"(\{.+?\})", dict, lambda m: eval(m[1]), alias="dict", allow_origin=True)
+LIST: Final[Pattern[list]] = Pattern.regex_convert(
+    r"(\[.+?\])", list, lambda m: eval(m[1]), alias="list", allow_origin=True
+)
+TUPLE: Final[Pattern[tuple]] = Pattern.regex_convert(
+    r"(\(.+?\))", tuple, lambda m: eval(m[1]), alias="tuple", allow_origin=True
+)
+SET: Final[Pattern[set]] = Pattern.regex_convert(
+    r"(\{.+?\})", set, lambda m: eval(m[1]), alias="set", allow_origin=True
+)
+DICT: Final[Pattern[dict]] = Pattern.regex_convert(
+    r"(\{.+?\})", dict, lambda m: eval(m[1]), alias="dict", allow_origin=True
+)
 
 EMAIL: Final = Pattern.regex_match(r"(?:[\w\.+-]+)@(?:[\w\.-]+)\.(?:[\w\.-]+)", alias="email")
 """匹配邮箱地址的表达式"""

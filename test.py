@@ -237,7 +237,7 @@ def test_pattern_post_validator():
 
 
 def test_parser():
-    from typing import Literal, Protocol, Type, TypeVar, Sequence
+    from typing import Literal, Protocol, Sequence, Type, TypeVar
     from typing_extensions import Annotated
 
     pat11 = parser(int)
@@ -294,7 +294,7 @@ def test_parser():
 
 
 def test_union_pattern():
-    from typing import List, Optional, Union, Annotated
+    from typing import Annotated, List, Optional, Union
 
     pat12 = parser(Union[int, bool])
     assert pat12.execute(123).success
@@ -308,7 +308,7 @@ def test_union_pattern():
     assert pat12_2.execute("abc").success
     assert pat12_2.execute("bca").failed
     print(pat12, pat12_1, pat12_2)
-    pat12_3 = UnionPattern.of(List[bool], int)
+    pat12_3 = UnionPattern.of(Union[str, bool], int)
     print(pat12_3)
     pat12_4 = UnionPattern.with_(INTEGER, WIDE_BOOLEAN)
     assert pat12_4.execute(123).success
@@ -491,7 +491,8 @@ def test_combine():
 
 def test_funcs():
     from dataclasses import dataclass
-    from nepattern.func import Index, Slice, Map, Filter, Reduce, Join, Upper, Lower, Sum, Step, Dot, GetItem
+
+    from nepattern.func import Dot, Filter, GetItem, Index, Join, Lower, Map, Reduce, Slice, Step, Sum, Upper
 
     pat = Pattern(list[str], "chars").accept(str).convert(lambda _, x: list(x))
     assert pat.execute("abcde").value() == ["a", "b", "c", "d", "e"]

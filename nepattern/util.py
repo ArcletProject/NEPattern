@@ -22,8 +22,8 @@ if TYPE_CHECKING:
     TPattern: TypeAlias = Pattern[str]
 else:
     TPattern: type[Pattern[str]] = type(re_compile("", 0))
-GenericAlias: type = type(List[int])
-UnionType: type = type(Union[int, str])
+GenericAlias: type[CGenericAlias] = type(List[int])  # type: ignore
+UnionType: type[CUnionType] = type(Union[int, str])  # type: ignore
 
 
 @dataclasses.dataclass

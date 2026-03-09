@@ -10,9 +10,8 @@ from contextlib import suppress
 from copy import deepcopy
 import inspect
 from types import FunctionType, LambdaType, MethodType
-import typing
-from typing import Any, ForwardRef, Literal, TypeVar, Union, overload, runtime_checkable, Protocol
-from typing_extensions import Annotated, get_args, get_origin
+from typing import Any, ForwardRef, Literal, Protocol, TypeVar, Union, overload, runtime_checkable
+from typing_extensions import Annotated, TypeForm, get_args, get_origin
 
 from tarina.lang import lang
 
@@ -52,7 +51,7 @@ def _generic_parser(item: GenericAlias, extra: str) -> Pattern:  # type: ignore
         _args = {parser(t, extra) for t in get_args(item)}  # pragma: no cover
         return (_args.pop() if len(_args) == 1 else UnionPattern(*_args)) if _args else ANY
     if origin in (list, tuple, set, dict, type, frozenset):
-        item = origin[get_args(item)]
+        item = origin[get_args(item)]  # type: ignore
     return Pattern(origin=item, alias=f"{repr(item).split('.')[-1]}").accept(item)
 
 
@@ -95,11 +94,11 @@ def parser(item: FunctionType | MethodType | LambdaType, extra: str = "allow") -
 
 
 @overload
-def parser(item: type[_T], extra: str = "allow") -> Pattern[_T]: ...
+def parser(item: TypeForm[_T], extra: str = "allow") -> Pattern[_T]: ...
 
 
-@overload
-def parser(item: CUnionType, extra: str = "allow") -> UnionPattern[Any]: ...
+# @overload
+# def parser(item: CUnionType, extra: str = "allow") -> UnionPattern[Any]: ...
 
 
 @overload

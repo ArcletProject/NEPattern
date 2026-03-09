@@ -21,7 +21,7 @@ def Index(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{_new}[{index}]"
-    
+
     return _new  # type: ignore
 
 
@@ -49,7 +49,7 @@ def Slice(
     if step != 1:
         _slice += f":{step}"
     _new.alias = f"{_new}[{_slice}]"
-    
+
     return _new
 
 
@@ -66,7 +66,7 @@ def Map(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{_new}.map({funcname or func.__name__})"
-    
+
     return _new  # type: ignore
 
 
@@ -83,7 +83,7 @@ def Filter(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{_new}.filter({funcname or func.__name__})"
-    
+
     return _new
 
 
@@ -105,9 +105,7 @@ class _SupportsSumWithNoDefaultGiven(SupportsAdd[Any, Any], SupportsRAdd[int, An
 _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWithNoDefaultGiven)
 
 
-def Sum(
-    pat: Pattern[list[_SupportsSumNoDefaultT]]
-) -> Pattern[_SupportsSumNoDefaultT]:
+def Sum(pat: Pattern[list[_SupportsSumNoDefaultT]]) -> Pattern[_SupportsSumNoDefaultT]:
     _new = pat.copy()
     _match = _new.match
 
@@ -116,7 +114,7 @@ def Sum(
 
     _new.match = match.__get__(_new)
     _new.alias = f"sum({_new})"
-    
+
     return _new  # type: ignore
 
 
@@ -152,7 +150,7 @@ def Reduce(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{_new}.reduce({funcname or func.__name__})"
-    
+
     return _new  # type: ignore
 
 
@@ -168,7 +166,7 @@ def Join(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{_new}.join({sep!r})"
-    
+
     return _new  # type: ignore
 
 
@@ -183,7 +181,7 @@ def Upper(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{_new}.upper()"
-    
+
     return _new  # type: ignore
 
 
@@ -198,7 +196,7 @@ def Lower(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{_new}.lower()"
-    
+
     return _new  # type: ignore
 
 
@@ -216,7 +214,7 @@ def Dot(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{_new}.{key}"
-    
+
     _new.origin = origin
     return _new  # type: ignore
 
@@ -240,7 +238,7 @@ def GetItem(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{_new}.{key}"
-    
+
     _new.origin = origin
     return _new  # type: ignore
 
@@ -260,5 +258,5 @@ def Step(
 
     _new.match = match.__get__(_new)
     _new.alias = f"{funcname or func.__name__}({_new})"
-    
+
     return _new  # type: ignore
