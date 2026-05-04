@@ -8,7 +8,7 @@ from typing_extensions import Self, TypeForm
 from tarina import Empty, generic_isinstance
 from tarina.lang import lang
 
-from .exception import MatchFailed
+from .exception import MatchFailed, UserMatchFailed
 from .util import TPattern
 
 T = TypeVar("T")
@@ -21,7 +21,7 @@ class ValidateResult(Generic[T]):
     def __init__(
         self,
         value: T | type[Empty] = Empty,
-        error: Exception | type[Empty] = Empty,
+        error: MatchFailed | type[Empty] = Empty,
     ):
         self._value = value
         self._error = error
@@ -34,10 +34,10 @@ class ValidateResult(Generic[T]):
             raise RuntimeError("cannot access value")
         return self._value  # type: ignore
 
-    def error(self) -> Exception | None:
+    def error(self) -> MatchFailed | None:
         """获取验证错误"""
         if self._error is not Empty:
-            assert isinstance(self._error, Exception)
+            assert isinstance(self._error, MatchFailed)
             return self._error
 
     @property
@@ -193,6 +193,7 @@ class Pattern(Generic[T]):
         try:
             return ValidateResult(self.match(input_))
         except Exception as e:
+            e = e if isinstance(e, MatchFailed) else UserMatchFailed(e)
             return ValidateResult(error=e)
 
     def __str__(self):

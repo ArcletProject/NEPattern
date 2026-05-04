@@ -12,7 +12,7 @@ from typing_extensions import TypeForm
 from tarina import DateParser, lang
 
 from .core import Pattern, _RegexPattern
-from .exception import MatchFailed
+from .exception import MatchFailed, UserMatchFailed
 from .util import TPattern
 
 TOrigin = TypeVar("TOrigin")
@@ -163,9 +163,15 @@ class UnionPattern(Pattern[_T]):
         if not input_:
             input_ = None
         if input_ not in self.for_equal:
+            last_custom_error: UserMatchFailed | None = None
             for pat in self.for_validate:
                 if (res := pat.execute(input_)).success:
                     return res.value()
+                err = res.error()
+                if isinstance(err, UserMatchFailed):
+                    last_custom_error = err
+            if last_custom_error:
+                raise last_custom_error
             raise MatchFailed(
                 lang.require("nepattern", "error.content").format(target=input_, expected=self.alias)
             )
