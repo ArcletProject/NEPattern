@@ -9,7 +9,7 @@ from typing_extensions import Self, get_args, get_origin
 from tarina import Empty, generic_isinstance
 from tarina.lang import lang
 
-from .exception import MatchFailed
+from .exception import MatchFailed, UserMatchFailed
 
 
 class MatchMode(IntEnum):
@@ -53,7 +53,7 @@ class ValidateResult(Generic[TVOrigin, TVRF]):
     def __init__(
         self,
         value: TVOrigin | type[Empty] = Empty,
-        error: Exception | type[Empty] = Empty,
+        error: MatchFailed | type[Empty] = Empty,
         flag: TVRF = ResultFlag.VALID,
     ):
         self._value = value
@@ -67,9 +67,9 @@ class ValidateResult(Generic[TVOrigin, TVRF]):
             raise RuntimeError("cannot access value")
         return self._value  # type: ignore
 
-    def error(self) -> Exception | None:
+    def error(self) -> MatchFailed | None:
         if self.flag == ResultFlag.ERROR and self._error != Empty:
-            assert isinstance(self._error, Exception)
+            assert isinstance(self._error, MatchFailed)
             return self._error
 
     @property
@@ -778,6 +778,7 @@ class BasePattern(Generic[TOrigin, TInput, TMM]):
             return ValidateResult(value=res, flag=ResultFlag.VALID)
         except Exception as e:
             if default is Empty:
+                e = e if isinstance(e, MatchFailed) else UserMatchFailed(e)
                 return ValidateResult(error=e, flag=ResultFlag.ERROR)
             return ValidateResult(default, flag=ResultFlag.DEFAULT)  # type: ignore
 

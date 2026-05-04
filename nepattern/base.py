@@ -25,7 +25,7 @@ from typing import (
 from tarina import DateParser, Empty, lang
 
 from .core import _MATCHES, TMM, BasePattern, MatchMode, ResultFlag, ValidateResult
-from .exception import MatchFailed
+from .exception import MatchFailed, UserMatchFailed
 from .util import TPattern
 
 TOrigin = TypeVar("TOrigin")
@@ -184,9 +184,15 @@ class UnionPattern(BasePattern[Any, _T, Literal[MatchMode.KEEP]]):
         if not input_:
             input_ = None
         if input_ not in self.for_equal:
+            last_custom_error: UserMatchFailed | None = None
             for pat in self.for_validate:
                 if (res := pat.validate(input_)).success:
                     return res.value()
+                err = res.error()
+                if isinstance(err, UserMatchFailed):
+                    last_custom_error = err
+            if last_custom_error:
+                raise last_custom_error
             raise MatchFailed(
                 lang.require("nepattern", "content_error").format(target=input_, expected=self.alias)
             )
@@ -418,7 +424,7 @@ class AntiPattern(BasePattern[TOrigin, Any, Literal[MatchMode.TYPE_CONVERT]]):
     @overload
     def validate(self, input_: _T, default: Any) -> ValidateResult[_T, Literal[ResultFlag.VALID]]: ...
 
-    def validate(self, input_: _T, default: Union[TDefault, Empty] = Empty) -> ValidateResult[_T | TDefault, ResultFlag]:  # type: ignore
+    def validate(self, input_: _T, default: Union[TDefault, Empty] = Empty):  # type: ignore
         """
         对传入的值进行反向验证，返回可能的匹配与转化结果。
 
