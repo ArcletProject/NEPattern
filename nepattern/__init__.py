@@ -67,6 +67,7 @@ global_patterns().update(
         dict: DICT,
         Path: PATH,
         "file": PathFile,
+        "wbool": WIDE_BOOLEAN,
     }
 )
 
