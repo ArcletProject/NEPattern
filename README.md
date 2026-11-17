@@ -15,7 +15,7 @@ from nepattern import Pattern
 
 pat = Pattern(str).accept(int).convert(lambda _, x: str(x))
 assert pat.execute(13).success
-assert pat.execute(42).value() == '42'
+assert pat.execute(42).value() == "42"
 assert not pat << 13.0
 ```
 

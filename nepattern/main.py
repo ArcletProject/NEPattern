@@ -5,13 +5,14 @@ from collections.abc import MutableMapping as ABCMuMap
 from collections.abc import MutableSequence as ABCMuSeq
 from collections.abc import MutableSet as ABCMuSet
 from collections.abc import Sequence as ABCSeq
-from collections.abc import Set as ABCSet
+from collections.abc import Set as ABCSet  # noqa: PYI025
 from contextlib import suppress
 from copy import deepcopy
 import inspect
 from types import FunctionType, LambdaType, MethodType
 from typing import Any, Annotated, ForwardRef, Literal, TypeVar, Union, overload, runtime_checkable
-from typing_extensions import LiteralString, TypeForm, get_args, get_origin
+from typing_extensions import TypeForm
+from typing import LiteralString, get_args, get_origin
 
 from tarina.lang import lang
 
@@ -28,12 +29,12 @@ from .base import (
 )
 from .context import all_patterns
 from .core import Pattern
-from .util import CGenericAlias, CUnionType, GenericAlias, RawStr, TPattern
+from .util import CGenericAlias, CUnionType, TypGenericAlias, RawStr, TPattern
 
 _Contents = (Union, CUnionType, Literal)
 
 
-def _generic_parser(item: GenericAlias, extra: str) -> Pattern:  # type: ignore
+def _generic_parser(item: TypGenericAlias, extra: str) -> Pattern:  # type: ignore
     origin = get_origin(item)
     if origin is Annotated:
         org, *meta = get_args(item)
@@ -75,7 +76,9 @@ def parser(item: TPattern, extra: str = "allow") -> RegexPattern: ...
 
 
 @overload
-def parser(item: list[TypeForm[_T] | _T] | tuple[TypeForm[_T] | _T, ...] | set[TypeForm[_T] | _T], extra: str = "allow") -> UnionPattern[_T]: ...
+def parser(
+    item: list[TypeForm[_T] | _T] | tuple[TypeForm[_T] | _T, ...] | set[TypeForm[_T] | _T], extra: str = "allow"
+) -> UnionPattern[_T]: ...
 
 
 @overload
@@ -101,7 +104,7 @@ def parser(item: Any, extra: str = "allow") -> Pattern:
     with suppress(TypeError):
         if item and (pat := all_patterns().get(item, None)):
             return pat
-    if isinstance(item, (GenericAlias, CGenericAlias, CUnionType)):
+    if isinstance(item, (TypGenericAlias, CGenericAlias, CUnionType)):
         return _generic_parser(item, extra)
     if isinstance(item, TypeVar):
         return _typevar_parser(item)
@@ -112,7 +115,7 @@ def parser(item: Any, extra: str = "allow") -> Pattern:
             raise TypeError(f"{item} can only accept 1 or 2 argument")
         anno = list(sig.parameters.values())[-1].annotation
         return (
-            Pattern((Any if sig.return_annotation == inspect.Signature.empty else sig.return_annotation))  # type: ignore
+            Pattern(Any if sig.return_annotation == inspect.Signature.empty else sig.return_annotation)  # type: ignore
             .accept(Any if anno == inspect.Signature.empty else anno)
             .convert(item if len(sig.parameters) == 2 else lambda _, x: item(x))
         )
@@ -132,12 +135,12 @@ def parser(item: Any, extra: str = "allow") -> Pattern:
     if isinstance(item, RawStr):
         return DirectPattern(item.value, alias=f"'{item.value}'")
     if isinstance(item, (list, tuple, set, ABCSeq, ABCMuSeq, ABCSet, ABCMuSet)):  # Args[foo, [123, int]]
-        return UnionPattern(*map(lambda x: parser(x) if inspect.isclass(x) else x, item))
+        return UnionPattern(*(parser(x) if inspect.isclass(x) else x for x in item))
     if isinstance(item, (dict, ABCMap, ABCMuMap)):
         return SwitchPattern(dict(item))
     if isinstance(item, ForwardRef):
         return ForwardRefPattern(item)
-    if item is None or type(None) == item:
+    if item is None or type(None) is item:
         return NONE
     if extra == "ignore":
         return ANY

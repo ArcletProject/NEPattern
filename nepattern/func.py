@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from functools import reduce
-from typing import Any, Callable, Protocol, TypeVar, overload
+from typing import Any, Protocol, TypeVar, overload
+from collections.abc import Callable
 
 from .core import Pattern
 

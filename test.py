@@ -1,8 +1,40 @@
-from typing import Union
+import re
+from pathlib import Path
 
 import pytest
-
-from nepattern import *
+from nepattern import (
+    STRING,
+    BYTES,
+    INTEGER,
+    FLOAT,
+    BOOLEAN,
+    WIDE_BOOLEAN,
+    HEX,
+    DATETIME,
+    PATH,
+    DelimiterInt,
+    NUMBER,
+    Pattern,
+    parser,
+    UnionPattern,
+    ANY,
+    AntiPattern,
+    all_patterns,
+    create_local_patterns,
+    RegexPattern,
+    SwitchPattern,
+    local_patterns,
+    switch_local_patterns,
+    DirectPattern,
+    URL,
+    RawStr,
+    MatchFailed,
+    DirectTypePattern,
+    NONE,
+    combine,
+    reset_local_patterns,
+    TPattern,
+)
 
 
 def test_type():
@@ -101,7 +133,7 @@ def test_result():
 def test_pattern_of():
     """测试 Pattern 的快速创建方法之一, 对类有效"""
     pat = Pattern(int)
-    assert pat.origin == int
+    assert pat.origin is int
     assert pat.execute(123).value() == 123
     assert pat.execute("abc").failed
     print(pat)
@@ -112,7 +144,7 @@ def test_pattern_of():
 def test_pattern_on():
     """测试 Pattern 的快速创建方法之一, 对对象有效"""
     pat1 = Pattern.on(123)
-    assert pat1.origin == int
+    assert pat1.origin is int
     assert pat1.execute(123).value() == 123
     assert pat1.execute(124).failed
     print(pat1)
@@ -135,7 +167,7 @@ def test_pattern_regex():
     assert pat3.execute("abcAbc123").failed
     print(pat3)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=re.escape("不允许正则表达式 ^abc[A-Z]+123 头尾部分使用 '^' 或 '$'")):
         Pattern.regex_match("^abc[A-Z]+123")
 
     pat3_1 = Pattern.regex_match(re.compile(r"abc[A-Z]+123"))
@@ -196,7 +228,7 @@ def test_pattern_accepts():
     pat6 = Pattern(str).accept(bytes).convert(lambda _, x: x.decode())
     assert pat6.execute(b"123").value() == "123"
     assert pat6.execute(123).failed
-    pat6_1 = Pattern().accept(Union[int, float])
+    pat6_1 = Pattern().accept(int | float)
     assert pat6_1.execute(123).value() == 123
     assert pat6_1.execute("123").failed
     print(pat6, pat6_1)
@@ -237,8 +269,9 @@ def test_pattern_post_validator():
 
 
 def test_parser():
-    from typing import Literal, Protocol, Sequence, Type, TypeVar
-    from typing_extensions import Annotated
+    from typing import Literal, Protocol, TypeVar
+    from collections.abc import Sequence
+    from typing import Annotated
 
     pat11 = parser(int)
     assert pat11.execute(-321).success
@@ -247,7 +280,7 @@ def test_parser():
     pat11_2 = parser(int)
     assert pat11_2 == pat11
     assert isinstance(parser(Literal["a", "b"]), UnionPattern)
-    assert parser(Type[int]).origin == type[int]
+    assert parser(type[int]).origin is type[int]
     assert parser(complex) != Pattern(complex)
     assert isinstance(parser("a|b|c"), UnionPattern)
     assert isinstance(parser("re:a|b|c"), Pattern)
@@ -263,8 +296,8 @@ def test_parser():
         return str(x)
 
     pat11_3 = parser(my_func)
-    assert pat11_3.origin == str
-    assert pat11_3._accepts == int
+    assert pat11_3.origin is str
+    assert pat11_3._accepts is int
 
     assert parser(complex, extra="ignore") == ANY
 
@@ -294,21 +327,19 @@ def test_parser():
 
 
 def test_union_pattern():
-    from typing import Annotated, List, Optional, Union
-
-    pat12 = parser(Union[int, bool])
+    pat12 = parser(int | bool)
     assert pat12.execute(123).success
     assert pat12.execute("123").success
     assert pat12.execute("123").value() == 123
     assert pat12.execute(123.0).value() == 123
-    pat12_1 = parser(Optional[str])
+    pat12_1 = parser(str | None)
     assert pat12_1.execute("123").success
     assert pat12_1.execute(None).success
     pat12_2 = UnionPattern("abc", "efg")
     assert pat12_2.execute("abc").success
     assert pat12_2.execute("bca").failed
     print(pat12, pat12_1, pat12_2)
-    pat12_3 = UnionPattern.of(Union[str, bool], int)
+    pat12_3 = UnionPattern.of(str | bool, int)
     print(pat12_3)
     pat12_4 = UnionPattern.with_(INTEGER, WIDE_BOOLEAN)
     assert pat12_4.execute(123).success
@@ -419,10 +450,10 @@ def test_patterns():
     assert not local_patterns().get("b")
     reset_local_patterns()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=re.escape("$temp")):
         create_local_patterns("$temp")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=re.escape("$temp")):
         switch_local_patterns("$temp")
 
     with pytest.raises(KeyError):

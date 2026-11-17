@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import builtins
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 import re
 import sys
 from types import MethodType
-from typing import Any, Callable, Final, ForwardRef, Generic, Match, TypeVar, Union, cast, final, overload
+from typing import Any, Final, ForwardRef, Generic, TypeVar, Union, cast, final, overload
+from re import Match
+from collections.abc import Callable
 from typing_extensions import TypeForm
 
 from tarina import DateParser, lang
@@ -63,9 +66,7 @@ class DirectPattern(Pattern[TOrigin]):
 
     def match(self, input_: Any):
         if input_ != self.target:
-            raise MatchFailed(
-                lang.require("nepattern", "error.content").format(target=input_, expected=self.target)
-            )
+            raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected=self.target))
         return input_
 
     def __eq__(self, other):  # pragma: no cover
@@ -109,15 +110,11 @@ class RegexPattern(_RegexPattern[Match[str]]):
     def match(self, input_: Any) -> Match[str]:
         if not isinstance(input_, str):
             raise MatchFailed(
-                lang.require("nepattern", "error.type").format(
-                    type=input_.__class__, target=input_, expected="str"
-                )
+                lang.require("nepattern", "error.type").format(type=input_.__class__, target=input_, expected="str")
             )
         if mat := (re.match(self.pattern, input_) or re.search(self.pattern, input_)):
             return mat
-        raise MatchFailed(
-            lang.require("nepattern", "error.content").format(target=input_, expected=self.pattern)
-        )
+        raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected=self.pattern))
 
     def __eq__(self, other):  # pragma: no cover
         return isinstance(other, RegexPattern) and self.pattern == other.pattern
@@ -172,9 +169,7 @@ class UnionPattern(Pattern[_T]):
                     last_custom_error = err
             if last_custom_error:
                 raise last_custom_error
-            raise MatchFailed(
-                lang.require("nepattern", "error.content").format(target=input_, expected=self.alias)
-            )
+            raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected=self.alias))
         return input_
 
     @classmethod
@@ -189,9 +184,7 @@ class UnionPattern(Pattern[_T]):
 
     @classmethod
     @overload
-    def with_(
-        cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], /
-    ) -> UnionPattern[_T1 | _T2 | _T3]: ...
+    def with_(cls, pat1: Pattern[_T1], pat2: Pattern[_T2], pat3: Pattern[_T3], /) -> UnionPattern[_T1 | _T2 | _T3]: ...
 
     @classmethod
     @overload
@@ -292,11 +285,11 @@ _TSwtich = TypeVar("_TSwtich")
 class SwitchPattern(Pattern[_TCase], Generic[_TCase, _TSwtich]):
     """匹配多种情况的表达式"""
 
-    switch: dict[_TSwtich | ellipsis, _TCase]
+    switch: dict[_TSwtich | builtins.ellipsis, _TCase]
 
     __slots__ = ("switch",)
 
-    def __init__(self, data: dict[_TSwtich, _TCase] | dict[_TSwtich | ellipsis, _TCase]):
+    def __init__(self, data: dict[_TSwtich, _TCase] | dict[_TSwtich | builtins.ellipsis, _TCase]):
         self.switch = data  # type: ignore
         super().__init__(type(list(data.values())[0]))
 
@@ -327,10 +320,7 @@ class ForwardRefPattern(Pattern[Any]):
         if isinstance(input_, str) and input_ == self.ref.__forward_arg__:
             return input_
         _main = sys.modules["__main__"]
-        if sys.version_info < (3, 9):  # pragma: no cover
-            origin = self.ref._evaluate(_main.__dict__, _main.__dict__)  # type: ignore
-        else:  # pragma: no cover
-            origin = self.ref._evaluate(_main.__dict__, _main.__dict__, recursive_guard=frozenset())  # type: ignore
+        origin = self.ref._evaluate(_main.__dict__, _main.__dict__, recursive_guard=frozenset())  # type: ignore
         if not isinstance(input_, origin):  # type: ignore
             raise MatchFailed(
                 lang.require("nepattern", "error.type").format(
@@ -354,9 +344,7 @@ class AntiPattern(Pattern[TOrigin]):
             self.base.match(input_)
         except MatchFailed:
             return input_
-        raise MatchFailed(
-            lang.require("nepattern", "error.content").format(target=input_, expected=self.alias)
-        )
+        raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected=self.alias))
 
     def __eq__(self, other):  # pragma: no cover
         return isinstance(other, AntiPattern) and self.base == other.base
@@ -422,9 +410,7 @@ class BytesPattern(Pattern[bytes]):
         elif isinstance(input_, str):
             return input_.encode()
         raise MatchFailed(
-            lang.require("nepattern", "error.type").format(
-                type=input_.__class__, target=input_, expected="bytes | str"
-            )
+            lang.require("nepattern", "error.type").format(type=input_.__class__, target=input_, expected="bytes | str")
         )
 
     def __eq__(self, other):  # pragma: no cover
@@ -448,9 +434,7 @@ class IntPattern(Pattern[int]):
         try:
             return int(input_)
         except (ValueError, TypeError, OverflowError) as e:
-            raise MatchFailed(
-                lang.require("nepattern", "error.content").format(target=input_, expected="int")
-            ) from e
+            raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected="int")) from e
 
     def __eq__(self, other):  # pragma: no cover
         return other.__class__ is IntPattern
@@ -472,9 +456,7 @@ class FloatPattern(Pattern[float]):
         try:
             return float(input_)
         except (TypeError, ValueError) as e:
-            raise MatchFailed(
-                lang.require("nepattern", "error.content").format(target=input_, expected="float")
-            ) from e
+            raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected="float")) from e
 
     def __eq__(self, other):  # pragma: no cover
         return other.__class__ is FloatPattern
@@ -486,9 +468,9 @@ FLOAT: Final = FloatPattern()
 
 @final
 @_SpecialPattern
-class NumberPattern(Pattern[Union[int, float]]):
+class NumberPattern(Pattern[int | float]):
     def __init__(self):
-        super().__init__(origin=Union[int, float], alias="number")  # type: ignore
+        super().__init__(origin=int | float, alias="number")  # type: ignore
 
     def match(self, input_: Any) -> int | float:
         if isinstance(input_, (float, int)):
@@ -615,14 +597,10 @@ class WideBoolPattern(Pattern[bool]):
                 return True
             if input_ in self.BOOL_FALSE:
                 return False
-            raise MatchFailed(
-                lang.require("nepattern", "error.content").format(target=input_, expected="bool")
-            )
+            raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected="bool"))
         except (ValueError, TypeError) as e:
             raise MatchFailed(
-                lang.require("nepattern", "error.type").format(
-                    type=input_.__class__, target=input_, expected="bool"
-                )
+                lang.require("nepattern", "error.type").format(type=input_.__class__, target=input_, expected="bool")
             ) from e
 
     def __eq__(self, other):  # pragma: no cover
@@ -670,16 +648,12 @@ class HexPattern(Pattern[int]):
     def match(self, input_: Any) -> int:
         if not isinstance(input_, str):
             raise MatchFailed(
-                lang.require("nepattern", "error.type").format(
-                    type=input_.__class__, target=input_, expected="str"
-                )
+                lang.require("nepattern", "error.type").format(type=input_.__class__, target=input_, expected="str")
             )
         try:
             return int(input_, 16)
         except ValueError as e:
-            raise MatchFailed(
-                lang.require("nepattern", "error.content").format(target=input_, expected="hex")
-            ) from e
+            raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected="hex")) from e
 
     def __eq__(self, other):  # pragma: no cover
         return other.__class__ is HexPattern
@@ -742,7 +716,7 @@ PATH: Final = PathPattern()
 
 PathFile: Final = (
     Pattern(bytes)
-    .accept(Union[str, Path, bytes])
+    .accept(str | bytes | Path)
     .pre_validate(lambda x: isinstance(x, bytes) or (isinstance(x, (str, Path)) and Path(x).is_file()))
     .convert(lambda _, x: x if isinstance(x, bytes) else Path(x).read_bytes())
 )
@@ -770,9 +744,7 @@ def combine(
         def match(self, input_):
             res = _match(self, input_)
             if not validator(res):
-                raise MatchFailed(
-                    lang.require("nepattern", "error.content").format(target=input_, expected=alias)
-                )
+                raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected=alias))
             return res
 
         _new.match = match.__get__(_new)

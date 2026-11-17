@@ -4,7 +4,7 @@ jobs:
   test:
     strategy:
       matrix:
-        py_ver: ['3.9', '3.10', '3.11', '3.12']
+        py_ver: ['3.11', '3.12', '3.13', '3.14', '3.15']
     runs-on:  ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +23,7 @@ jobs:
         run: |
           pdm run test
       - uses: codecov/codecov-action@v4
-        if: matrix.py_ver == '3.12'
+        if: matrix.py_ver == '3.13'
         with:
           files: ./coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}

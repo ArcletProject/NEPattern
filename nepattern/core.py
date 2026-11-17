@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from copy import deepcopy
 import re
-from typing import Any, Callable, Generic, TypeVar, cast, overload
-from typing_extensions import Self, TypeForm, Sentinel
+from typing import Any, Generic, TypeVar, cast, overload
+from collections.abc import Callable
+from typing_extensions import TypeForm, Sentinel
+from typing import Self
 
 from tarina import generic_isinstance
 from tarina.lang import lang
@@ -74,9 +76,7 @@ class Pattern(Generic[T]):
         def _(self: _RegexPattern, x: str):
             mat = re.match(self.pattern, x) or re.search(self.pattern, x)
             if not mat:
-                raise MatchFailed(
-                    lang.require("nepattern", "error.content").format(target=x, expected=self.pattern)
-                )
+                raise MatchFailed(lang.require("nepattern", "error.content").format(target=x, expected=self.pattern))
             return mat[0]
 
         return pat
@@ -172,13 +172,9 @@ class Pattern(Generic[T]):
 
     def match(self, input_: Any) -> T:
         if not generic_isinstance(input_, self._accepts):
-            raise MatchFailed(
-                lang.require("nepattern", "error.type").format(target=input_, expected=self._accepts)
-            )
+            raise MatchFailed(lang.require("nepattern", "error.type").format(target=input_, expected=self._accepts))
         if self._pre_validator and not self._pre_validator(input_):
-            raise MatchFailed(
-                lang.require("nepattern", "error.content").format(target=input_, expected=self.origin)
-            )
+            raise MatchFailed(lang.require("nepattern", "error.content").format(target=input_, expected=self.origin))
         if self._converter:
             input_ = self._converter(self, input_)
             if input_ is None:
