@@ -9,12 +9,13 @@ from collections.abc import Set as ABCSet  # noqa: PYI025
 from contextlib import suppress
 from copy import deepcopy
 import inspect
-from types import FunctionType, LambdaType, MethodType
-from typing import Any, Annotated, ForwardRef, Literal, TypeVar, Union, overload, runtime_checkable
+from types import FunctionType, LambdaType, MethodType, UnionType
+from typing import Any, Annotated, ForwardRef, Literal, TypeVar, overload, runtime_checkable
 from typing_extensions import TypeForm
 from typing import LiteralString, get_args, get_origin
 
 from tarina.lang import lang
+from tarina.generic import Unions
 
 from .base import (
     ANY,
@@ -29,9 +30,9 @@ from .base import (
 )
 from .context import all_patterns
 from .core import Pattern
-from .util import CGenericAlias, CUnionType, TypGenericAlias, RawStr, TPattern
+from .util import CGenericAlias, TypGenericAlias, RawStr, TPattern
 
-_Contents = (Union, CUnionType, Literal)
+_Contents = (Literal, *Unions)
 
 
 def _generic_parser(item: TypGenericAlias, extra: str) -> Pattern:  # type: ignore
@@ -104,7 +105,7 @@ def parser(item: Any, extra: str = "allow") -> Pattern:
     with suppress(TypeError):
         if item and (pat := all_patterns().get(item, None)):
             return pat
-    if isinstance(item, (TypGenericAlias, CGenericAlias, CUnionType)):
+    if isinstance(item, (TypGenericAlias, CGenericAlias, UnionType)):
         return _generic_parser(item, extra)
     if isinstance(item, TypeVar):
         return _typevar_parser(item)

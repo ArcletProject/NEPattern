@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import dataclasses
 from types import GenericAlias as CGenericAlias  # noqa: F401
-from types import UnionType as CUnionType  # noqa: F401
 from typing import TYPE_CHECKING, List, TypeVar, Generic  # noqa: UP035
 from re import Pattern
 from typing import TypeAlias, LiteralString

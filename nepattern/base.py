@@ -6,8 +6,8 @@ from enum import Enum
 from pathlib import Path
 import re
 import sys
-from types import MethodType
-from typing import Any, Final, ForwardRef, Generic, TypeVar, Union, cast, final, overload
+from types import MethodType, UnionType
+from typing import Any, Final, ForwardRef, Generic, TypeVar, cast, final, overload
 from re import Match
 from collections.abc import Callable
 from typing_extensions import TypeForm
@@ -154,7 +154,12 @@ class UnionPattern(Pattern[_T]):
             [str(a) for a in self.for_validate] + [repr(a) for a in self.for_equal]
         )  # pragma: no cover
         types = [i.origin for i in self.for_validate] + [type(i) for i in self.for_equal]  # pragma: no cover
-        super().__init__(Union.__getitem__(tuple(types)), alias=alias_content)  # type: ignore
+        if sys.version_info >= (3, 14):
+            super().__init__(UnionType.__class_getitem__(tuple(types)), alias=alias_content)  # type: ignore
+        else:
+            from typing import Union
+
+            super().__init__(Union.__getitem__(tuple(types)), alias=alias_content)  # type: ignore
 
     def match(self, input_: Any):
         if not input_:
