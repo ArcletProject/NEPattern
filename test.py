@@ -280,7 +280,7 @@ def test_parser():
     pat11_2 = parser(int)
     assert pat11_2 == pat11
     assert isinstance(parser(Literal["a", "b"]), UnionPattern)
-    assert parser(type[int]).origin is type[int]
+    assert parser(type[int]).origin == type[int]
     assert parser(complex) != Pattern(complex)
     assert isinstance(parser("a|b|c"), UnionPattern)
     assert isinstance(parser("re:a|b|c"), Pattern)
@@ -365,7 +365,7 @@ def test_converters():
     assert pattern_map["hex"].execute("0xff").value() == 255
     assert pattern_map["color"].execute("#ffffff").value() == "ffffff"
     assert pattern_map["datetime"].execute("2011-11-04").value().day == 4
-    assert pattern_map["file"].execute("test.py").value()[:4] == b"from"
+    assert pattern_map["file"].execute("test.py").value()[:6] == b"import"
     assert pattern_map["number"].execute("123").value() == 123
     assert pattern_map["int"].execute("123").value() == 123
     assert pattern_map["float"].execute("12.34").value() == 12.34
