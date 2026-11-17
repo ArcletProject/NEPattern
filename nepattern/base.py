@@ -511,6 +511,64 @@ NUMBER: Final = NumberPattern()
 
 @final
 @_SpecialPattern
+class PositiveIntPattern(Pattern[int]):
+    def __init__(self):
+        super().__init__(origin=int, alias="posint")
+
+    def match(self, input_: Any) -> int:
+        if isinstance(input_, int) and input_ > 0:
+            return input_
+        try:
+            res = int(input_)
+            if res <= 0:
+                raise MatchFailed(
+                    lang.require("nepattern", "error.content").format(target=input_, expected="positive int")
+                )
+            return res
+        except (ValueError, TypeError) as e:
+            raise MatchFailed(
+                lang.require("nepattern", "error.content").format(target=input_, expected="positive int")
+            ) from e
+
+    def __eq__(self, other):  # pragma: no cover
+        return other.__class__ is PositiveIntPattern
+
+
+POSINT: Final = PositiveIntPattern()
+"""正整数表达式，只能接受正整数样式的量"""
+
+
+@final
+@_SpecialPattern
+class NaturalIntPattern(Pattern[int]):
+    def __init__(self):
+        super().__init__(origin=int, alias="natint")
+
+    def match(self, input_: Any) -> int:
+        if isinstance(input_, int) and input_ >= 0:
+            return input_
+        try:
+            res = int(input_)
+            if res < 0:
+                raise MatchFailed(
+                    lang.require("nepattern", "error.content").format(target=input_, expected="natural int")
+                )
+            return res
+        except (ValueError, TypeError) as e:
+            raise MatchFailed(
+                lang.require("nepattern", "error.content").format(target=input_, expected="natural int")
+            ) from e
+
+    def __eq__(self, other):  # pragma: no cover
+        return other.__class__ is NaturalIntPattern
+
+
+NATURAL: Final = NaturalIntPattern()
+"""自然数表达式，只能接受自然数样式的量"""
+
+
+@final
+@_SpecialPattern
 class BoolPattern(Pattern[bool]):
     def __init__(self):
         super().__init__(origin=bool, alias="bool")

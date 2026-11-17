@@ -2,17 +2,20 @@ from __future__ import annotations
 
 from copy import deepcopy
 import re
-from typing import Any, Callable, Generic, TypeVar, Union, cast, overload
-from typing_extensions import Self, TypeForm
+from typing import Any, Callable, Generic, TypeVar, cast, overload
+from typing_extensions import Self, TypeForm, Sentinel
 
-from tarina import Empty, generic_isinstance
+from tarina import generic_isinstance
 from tarina.lang import lang
 
 from .exception import MatchFailed, UserMatchFailed
 from .util import TPattern
 
 T = TypeVar("T")
+T1 = TypeVar("T1")
 _T = TypeVar("_T")
+
+MISSING = Sentinel("MISSING")
 
 
 class ValidateResult(Generic[T]):
@@ -20,8 +23,8 @@ class ValidateResult(Generic[T]):
 
     def __init__(
         self,
-        value: T | type[Empty] = Empty,
-        error: MatchFailed | type[Empty] = Empty,
+        value: T | MISSING = MISSING,
+        error: MatchFailed | MISSING = MISSING,
     ):
         self._value = value
         self._error = error
@@ -30,33 +33,33 @@ class ValidateResult(Generic[T]):
 
     def value(self) -> T:
         """获取验证结果"""
-        if self._value is Empty:
+        if self._value is MISSING:
             raise RuntimeError("cannot access value")
         return self._value  # type: ignore
 
     def error(self) -> MatchFailed | None:
         """获取验证错误"""
-        if self._error is not Empty:
+        if self._error is not MISSING:
             assert isinstance(self._error, MatchFailed)
             return self._error
 
     @property
     def success(self) -> bool:
         """是否验证成功"""
-        return self._value is not Empty
+        return self._value is not MISSING
 
     @property
     def failed(self) -> bool:
         """是否验证失败"""
-        return self._value is Empty
+        return self._value is MISSING
 
     def __bool__(self):  # pragma: no cover
-        return self._value != Empty
+        return self._value != MISSING
 
     def __repr__(self):
         return (
             f"ValidateResult(value={self._value!r})"
-            if self._value is not Empty
+            if self._value is not MISSING
             else f"ValidateResult(error={self._error!r})"
         )
 
@@ -89,7 +92,7 @@ class Pattern(Generic[T]):
         """构建一个正则表达式匹配的 Pattern，并提供转换函数"""
         pat = _RegexPattern(pattern, origin, alias or str(pattern))
         if allow_origin:
-            pat.accept(Union[str, origin])
+            pat.accept(str | origin)
 
             @pat.convert
             def _(self: _RegexPattern, x):
@@ -227,6 +230,13 @@ class Pattern(Generic[T]):
 
     def __eq__(self, other):
         return isinstance(other, Pattern) and self.__hash__() == other.__hash__()
+
+    def __or__(self, other: Pattern[T1]) -> Pattern[T | T1]:
+        from .base import UnionPattern
+
+        if isinstance(other, UnionPattern):
+            return UnionPattern(self, *other.base)
+        return UnionPattern.with_(self, other)
 
 
 class _RegexPattern(Pattern[T]):

@@ -3,8 +3,8 @@ from __future__ import annotations
 import dataclasses
 import sys
 from types import GenericAlias as CGenericAlias  # noqa: F401
-from typing import TYPE_CHECKING, List, Pattern, Union
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, List, Pattern, Union, TypeVar, Generic
+from typing_extensions import TypeAlias, LiteralString
 
 from .i18n import lang as lang  # noqa: F401
 
@@ -26,6 +26,9 @@ GenericAlias: type[CGenericAlias] = type(List[int])  # type: ignore
 UnionType: type[CUnionType] = type(Union[int, str])  # type: ignore
 
 
-@dataclasses.dataclass
-class RawStr:
-    value: str
+_TS = TypeVar("_TS", bound=LiteralString)
+
+
+@dataclasses.dataclass(frozen=True, slots=True, eq=True)
+class RawStr(Generic[_TS]):
+    value: _TS

@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Any
 
-from tarina import Empty as Empty  # noqa
-
 from .base import ANY as ANY
 from .base import AntiPattern as AntiPattern
 from .base import AnyString as AnyString
@@ -22,6 +20,8 @@ from .base import IP as IP
 from .base import LIST as LIST
 from .base import NONE as NONE
 from .base import NUMBER as NUMBER
+from .base import NATURAL as NATURAL
+from .base import POSINT as POSINT
 from .base import PATH as PATH
 from .base import PathFile as PathFile
 from .base import RegexPattern as RegexPattern
@@ -68,6 +68,10 @@ global_patterns().update(
         Path: PATH,
         "file": PathFile,
         "wbool": WIDE_BOOLEAN,
+        "time": DATETIME,
+        "datetime": DATETIME,
+        "posint": POSINT,
+        "natural": NATURAL,
     }
 )
 

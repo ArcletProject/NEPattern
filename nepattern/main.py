@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping as ABCMap
+from collections.abc import Mapping as ABCMap, Callable
 from collections.abc import MutableMapping as ABCMuMap
 from collections.abc import MutableSequence as ABCMuSeq
 from collections.abc import MutableSet as ABCMuSet
@@ -10,8 +10,8 @@ from contextlib import suppress
 from copy import deepcopy
 import inspect
 from types import FunctionType, LambdaType, MethodType
-from typing import Any, ForwardRef, Literal, Protocol, TypeVar, Union, overload, runtime_checkable
-from typing_extensions import Annotated, TypeForm, get_args, get_origin
+from typing import Any, Annotated, ForwardRef, Literal, TypeVar, Union, overload, runtime_checkable
+from typing_extensions import LiteralString, TypeForm, get_args, get_origin
 
 from tarina.lang import lang
 
@@ -66,6 +66,7 @@ def _protocol_parser(item: type):
 
 
 _T = TypeVar("_T")
+_TS = TypeVar("_TS", bound=LiteralString)
 _K = TypeVar("_K")
 
 
@@ -74,7 +75,7 @@ def parser(item: TPattern, extra: str = "allow") -> RegexPattern: ...
 
 
 @overload
-def parser(item: list[_T] | tuple[_T, ...] | set[_T], extra: str = "allow") -> UnionPattern[_T]: ...
+def parser(item: list[TypeForm[_T] | _T] | tuple[TypeForm[_T] | _T, ...] | set[TypeForm[_T] | _T], extra: str = "allow") -> UnionPattern[_T]: ...
 
 
 @overload
@@ -82,27 +83,15 @@ def parser(item: dict[_K, _T], extra: str = "allow") -> SwitchPattern[_T, _K]: .
 
 
 @overload
-def parser(item: TypeVar, extra: str = "allow") -> Pattern[Any]: ...
+def parser(item: RawStr[_TS], extra: str = "allow") -> DirectPattern[_TS]: ...
 
 
 @overload
-def parser(item: type[Protocol], extra: str = "allow") -> Pattern[Any]: ...  # type: ignore
+def parser(item: TypeForm[_T] | Callable[..., _T], extra: str = "allow") -> Pattern[_T]: ...
 
 
 @overload
-def parser(item: FunctionType | MethodType | LambdaType, extra: str = "allow") -> Pattern: ...
-
-
-@overload
-def parser(item: TypeForm[_T], extra: str = "allow") -> Pattern[_T]: ...
-
-
-# @overload
-# def parser(item: CUnionType, extra: str = "allow") -> UnionPattern[Any]: ...
-
-
-@overload
-def parser(item: _T, extra: str = "allow") -> Pattern[_T]: ...
+def parser(item: _T, extra: str = "allow") -> DirectPattern[_T]: ...
 
 
 def parser(item: Any, extra: str = "allow") -> Pattern:
